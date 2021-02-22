@@ -13,18 +13,15 @@ def log(s):
     h.write(f"[{datetime.datetime.now()}] {s}\n")
 
 class SymbolicState():
+    """
+    Base class for all types of symbolic states.
+    """
 
-    def __init__(self, symbols_changed: list):
-        """
-        Store the list of symbols (program variables and functions) whose status
-        changed when this symbolic state is reached in the symbolic
-        control-flow graph.
-        """
-        self._symbols_changed: list = symbols_changed
+    def __init__(self):
         self._children: list = []
     
     def __repr__(self):
-        return f"<SymbolicState (id {id(self)}) _symbols_changed={self._symbols_changed}>"
+        return f"<SymbolicState (id {id(self)})>"
     
     def add_child(self, child_symbolic_state):
         """
@@ -35,33 +32,49 @@ class SymbolicState():
     
     def get_children(self) -> list:
         return self._children
-    
-    def get_symbols_changed(self) -> list:
-        return self._symbols_changed
-
 
 class EmptySymbolicState(SymbolicState):
     """
     A symbolic state class to be used as the root for any symbolic control-flow graph.
     """
     def __init__(self):
-        super().__init__([])
+        super().__init__()
 
-class ConditionalEntrySymbolicState(SymbolicState):
+class StatementSymbolicState(SymbolicState):
+    """
+    A symbolic state class to be used as the state induced by a normal statement
+    (such as an assignment or a function call).
+    """
+    def __init__(self, symbols_changed: list):
+        super().__init__()
+        self._symbols_changed = symbols_changed
+    
+    def get_symbols_changed(self) -> list:
+        return self._symbols_changed
+
+class ControlFlowSymbolicState(SymbolicState):
+    """
+    A symbolic state class to be used as the base class for all symbolic states
+    representing control-flow.
+    """
+    def __init__(self):
+        super().__init__()
+
+class ConditionalEntrySymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the entry symbolic state for conditionals.
     """
     def __init__(self):
-        super().__init__([])
+        super().__init__()
 
-class ConditionalExitSymbolicState(SymbolicState):
+class ConditionalExitSymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the exit symbolic state for conditionals.
     """
     def __init__(self):
-        super().__init__([])
+        super().__init__()
 
-class ForLoopEntrySymbolicState(SymbolicState):
+class ForLoopEntrySymbolicState(StatementSymbolicState):
     """
     A symbolic state class to be used as the entry symbolic state for for-loops.
 
@@ -70,26 +83,26 @@ class ForLoopEntrySymbolicState(SymbolicState):
     def __init__(self, loop_counter_variables):
         super().__init__(loop_counter_variables)
 
-class ForLoopExitSymbolicState(SymbolicState):
+class ForLoopExitSymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the exit symbolic state for for-loops.
     """
     def __init__(self):
-        super().__init__([])
+        super().__init__()
 
-class WhileLoopEntrySymbolicState(SymbolicState):
+class WhileLoopEntrySymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the entry symbolic state for while-loops.
     """
     def __init__(self):
-        super().__init__([])
+        super().__init__()
 
-class WhileLoopExitSymbolicState(SymbolicState):
+class WhileLoopExitSymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the exit symbolic state for while-loops.
     """
     def __init__(self):
-        super().__init__([])
+        super().__init__()
 
 class SCFG():
 
@@ -256,7 +269,7 @@ class SCFG():
         # by child/parent
         for symbolic_state in self._symbolic_states:
             log(f"  Processing symbolic state {symbolic_state}")
-            if type(symbolic_state) is SymbolicState:
+            if type(symbolic_state) is StatementSymbolicState:
                 graph.node(str(id(symbolic_state)), str(symbolic_state.get_symbols_changed()), shape=shape)
             elif type(symbolic_state) is ForLoopEntrySymbolicState:
                 graph.node(str(id(symbolic_state)), f"{type(symbolic_state).__name__} : {symbolic_state.get_symbols_changed()}", shape=shape)
@@ -294,7 +307,7 @@ class SCFG():
         log(f"List of all symbols to mark as changed in the symbolic state is {all_symbols}")
         # set up a SymbolicState instance
         log(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
-        symbolic_state: SymbolicState = SymbolicState(all_symbols)
+        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols)
         return symbolic_state
     
     def _process_expression_ast(self, stmt_ast: ast.Expr):
@@ -314,7 +327,7 @@ class SCFG():
         
         # instantiate symbolic state
         log(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
-        symbolic_state: SymbolicState = SymbolicState(all_symbols)
+        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols)
         return symbolic_state
     
     def _extract_symbol_names_from_target(self, subast) -> list:
