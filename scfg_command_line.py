@@ -3,9 +3,10 @@ Command line module for generating a symbolic control-flow graph from a given Py
 """
 
 import ast
+import os
 import argparse
 
-from SCFG.builder import SCFG
+from SCFG.module_processor import ModuleProcessor
 
 # define command line arguments
 parser = argparse.ArgumentParser(description="Command line interface for SCFG construction package.")
@@ -20,8 +21,16 @@ with open(args.source_file, "r") as h:
     code = h.read()
     ast_list = ast.parse(code).body
 
-# instantiate the scfg
-scfg = SCFG(ast_list)
+# derive the module name by removing .py from the file name
+# and removing directories
+module_name = os.path.abspath(args.source_file).split("/")[-1].replace(".py", "")
 
-# write the scfg to a dot file
-scfg.write_to_file(args.graph_file)
+# get a ModuleProcessor instance
+module_processor = ModuleProcessor(module_name, ast_list)
+
+# get a map from fully-qualified function names in the module to their SCFGs
+function_name_to_scfg = module_processor.get_name_to_scfg_map()
+
+# write scfgs to file
+for function_name in function_name_to_scfg:
+    function_name_to_scfg[function_name].write_to_file(f"scfgs/{function_name}.gv")
