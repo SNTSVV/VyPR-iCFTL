@@ -5,7 +5,7 @@ module and construct a map from fully-qualified names to SCFGs.
 
 import ast
 
-from SCFG.builder import SCFG
+from VyPR.SCFG.builder import SCFG
 
 class ModuleProcessor():
 

@@ -45,9 +45,10 @@ class StatementSymbolicState(SymbolicState):
     A symbolic state class to be used as the state induced by a normal statement
     (such as an assignment or a function call).
     """
-    def __init__(self, symbols_changed: list):
+    def __init__(self, symbols_changed: list, ast_obj):
         super().__init__()
         self._symbols_changed = symbols_changed
+        self._ast_obj = ast_obj
     
     def get_symbols_changed(self) -> list:
         return self._symbols_changed
@@ -64,8 +65,9 @@ class ConditionalEntrySymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the entry symbolic state for conditionals.
     """
-    def __init__(self):
+    def __init__(self, ast_obj):
         super().__init__()
+        self._ast_obj = ast_obj
 
 class ConditionalExitSymbolicState(ControlFlowSymbolicState):
     """
@@ -80,8 +82,9 @@ class ForLoopEntrySymbolicState(StatementSymbolicState):
 
     The constructor takes the name of the iterator used by the for loop.
     """
-    def __init__(self, loop_counter_variables):
-        super().__init__(loop_counter_variables)
+    def __init__(self, loop_counter_variables, ast_obj):
+        super().__init__(loop_counter_variables, ast_obj)
+        self._ast_obj = ast_obj
 
 class ForLoopExitSymbolicState(ControlFlowSymbolicState):
     """
@@ -94,8 +97,9 @@ class WhileLoopEntrySymbolicState(ControlFlowSymbolicState):
     """
     A symbolic state class to be used as the entry symbolic state for while-loops.
     """
-    def __init__(self):
+    def __init__(self, ast_obj):
         super().__init__()
+        self._ast_obj = ast_obj
 
 class WhileLoopExitSymbolicState(ControlFlowSymbolicState):
     """
@@ -159,7 +163,7 @@ class SCFG():
 
                 # instantiate symbolic states for entry and exit
                 log(f"Setting up conditional entry and exit symbolic states")
-                entry_symbolic_state: ConditionalEntrySymbolicState = ConditionalEntrySymbolicState()
+                entry_symbolic_state: ConditionalEntrySymbolicState = ConditionalEntrySymbolicState(subprogram_ast)
                 exit_symbolic_state: ConditionalExitSymbolicState = ConditionalExitSymbolicState()
                 self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
                 log(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
@@ -202,7 +206,7 @@ class SCFG():
                 loop_counter_variables = self._extract_symbol_names_from_target(subprogram_ast.target)
                 log(f"Loop counter variables used by the loop are {loop_counter_variables}")
                 # instantiate states
-                entry_symbolic_state: ForLoopEntrySymbolicState = ForLoopEntrySymbolicState(loop_counter_variables)
+                entry_symbolic_state: ForLoopEntrySymbolicState = ForLoopEntrySymbolicState(loop_counter_variables, subprogram_ast)
                 exit_symbolic_state: ForLoopExitSymbolicState = ForLoopExitSymbolicState()
                 self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
                 log(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
@@ -230,7 +234,7 @@ class SCFG():
                 # instantiate symbolic states while entry and exit
                 log(f"Setting up while-loop entry and exit symbolic states")
                 # instantiate states
-                entry_symbolic_state: WhileLoopEntrySymbolicState = WhileLoopEntrySymbolicState()
+                entry_symbolic_state: WhileLoopEntrySymbolicState = WhileLoopEntrySymbolicState(subprogram_ast)
                 exit_symbolic_state: WhileLoopExitSymbolicState = WhileLoopExitSymbolicState()
                 self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
                 log(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
@@ -307,7 +311,7 @@ class SCFG():
         log(f"List of all symbols to mark as changed in the symbolic state is {all_symbols}")
         # set up a SymbolicState instance
         log(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
-        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols)
+        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     
     def _process_expression_ast(self, stmt_ast: ast.Expr):
@@ -327,7 +331,7 @@ class SCFG():
         
         # instantiate symbolic state
         log(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
-        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols)
+        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     
     def _extract_symbol_names_from_target(self, subast) -> list:
@@ -337,9 +341,10 @@ class SCFG():
         """
         # initialise an empty list of the symbol names
         symbol_names = []
-        # check the type of the ast
-        if type(subast) is ast.Name:
-            symbol_names.append(subast.id)
+        # walk the target object to look for ast.Name instances
+        for walked_ast in ast.walk(subast):
+            if type(walked_ast) is ast.Name:
+                symbol_names.append(walked_ast.id)
         return symbol_names
     
     def _extract_function_names(self, subast) -> list:
