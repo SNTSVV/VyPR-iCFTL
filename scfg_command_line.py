@@ -34,4 +34,6 @@ for filename in args.source_file:
 
     # write scfgs to file
     for function_name in function_name_to_scfg:
-        function_name_to_scfg[function_name].write_to_file(f"scfgs/{function_name}.gv")
+        scfg_file = f"scfgs/{function_name}.gv"
+        function_name_to_scfg[function_name].write_to_file(scfg_file)
+        print(f"SCFG for function '{function_name}' written to file '{scfg_file}.pdf'")
