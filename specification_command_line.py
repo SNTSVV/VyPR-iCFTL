@@ -8,6 +8,6 @@ from VyPR.Specifications.predicates import changes, calls
 specification = \
     Specification()\
     .forall(q = changes("x"))\
-    .check(lambda q : q)
+    .check(lambda q : q('x') < 10)
 
 print(specification)

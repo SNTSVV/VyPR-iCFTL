@@ -13,6 +13,7 @@ The final instance in the chain must be a Constraint instance.  This has recursi
 """
 
 from VyPR.Specifications.predicates import changes, calls
+from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable
 
 class Specification():
     """
@@ -27,6 +28,39 @@ class Specification():
         Construct the string representation recursively.
         """
         return f"{self.quantifier}"
+    
+    def get_variable_to_obj_map(self) -> dict:
+        """
+        Traverse the specification in order to construct a map
+        from each variable to the type of object it will hold
+        (either a ConcreteState or a Transition instance).
+
+        Note: this function should not try to serialise any objects from the specification
+        because serialisation of a Constraint instance requires calling of this function,
+        hence the result would be an infinite loop.
+        """
+        # initialise an empty map
+        variable_to_obj = {}
+        # set the current object to be the top-level specification
+        current_obj = self
+        # iterate through the structure, using the type Constraint as a place to stop
+        while type(current_obj) is not Constraint:
+            # traverse depending on the type of the current object
+            if type(current_obj) is Specification:
+                current_obj = current_obj.quantifier
+            elif type(current_obj) is Forall:
+                # first, add to the map
+                variable_to_obj[current_obj.variable] = current_obj.predicate.get_associated_variable(current_obj.variable)
+                # in the case of a quantifier, the two possibilities are
+                # that the next item to consider is a quantifier or a constraint
+                if current_obj.quantifier:
+                    current_obj = current_obj.quantifier
+                else:
+                    # if we arrive at a constraint, the loop
+                    # will stop at the next ieration
+                    current_obj = current_obj.constraint
+        
+        return variable_to_obj
 
     def forall(self, **quantified_variable):
         """
@@ -52,7 +86,7 @@ class Forall():
     The class for representing universal quantification in specifications.
     """
 
-    def __init__(self, specification_obj, **quantified_variable):
+    def __init__(self, specification_obj: Specification, **quantified_variable):
         self._specification_obj = specification_obj
         # we will use the fact that either a constraint or a quantifier is stored
         # to determine what the next thing we will see in the structure of the specification is
@@ -67,10 +101,10 @@ class Forall():
     def __repr__(self):
         if self.constraint:
             # this is the last quantifier, so the next thing to turn into a string is a constraint
-            return f"forall {self.variable} in {self.predicate}\n  {self.constraint}"
+            return f"forall {self.variable} in {self.predicate}:\n  {self.constraint}"
         else:
             # this is not the last quantifier - there is another nested inside
-            return f"forall {self.variable} in {self.predicate}\n{self.quantifier}"
+            return f"forall {self.variable} in {self.predicate}:\n{self.quantifier}"
 
     def forall(self, **quantified_variable):
         """
@@ -116,4 +150,5 @@ class Constraint():
         self._expression = expression
     
     def __repr__(self):
-        return f"<constraint>"
+        arguments = self._specification_obj.get_variable_to_obj_map()
+        return str(self._expression(**arguments))
