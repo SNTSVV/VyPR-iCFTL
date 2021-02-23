@@ -19,6 +19,7 @@ class SymbolicState():
 
     def __init__(self):
         self._children: list = []
+        self._parents: list = []
     
     def __repr__(self):
         return f"<SymbolicState (id {id(self)})>"
@@ -29,9 +30,22 @@ class SymbolicState():
         """
         log(f"Add {child_symbolic_state} as child of {self}")
         self._children.append(child_symbolic_state)
+        # also set self as parent of child
+        log(f"...also setting {self} as parent of {child_symbolic_state}")
+        child_symbolic_state.add_parent(self)
+    
+    def add_parent(self, parent_symbolic_state):
+        """
+        Add a parent symbolic state to self.
+        """
+        log(f"Add {parent_symbolic_state} as child of {self}")
+        self._parents.append(parent_symbolic_state)
     
     def get_children(self) -> list:
         return self._children
+    
+    def get_parents(self) -> list:
+        return self._parents
 
 class EmptySymbolicState(SymbolicState):
     """
