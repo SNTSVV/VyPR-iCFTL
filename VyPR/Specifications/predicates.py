@@ -13,6 +13,9 @@ class changes(predicate):
     def __init__(self, variable):
         self._variable = variable
     
+    def __repr__(self):
+        return f"changes({self._variable})"
+    
     def during(self, function_name):
         self._during_function = function_name
 
@@ -23,6 +26,9 @@ class calls(predicate):
 
     def __init__(self, function_name):
         self._function_name = function_name
+    
+    def __repr__(self):
+        return f"calls({self._function_name})"
     
     def during(self, function_name):
         self._during_function = function_name
