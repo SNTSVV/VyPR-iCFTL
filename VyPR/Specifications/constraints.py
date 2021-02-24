@@ -99,6 +99,18 @@ class TransitionExpression():
             return NextTransitionFromTransition(self, predicate)
         elif type(predicate) is changes:
             return NextConcreteStateFromTransition(self, predicate)
+    
+    def before(self):
+        """
+        Instantiate a ConcreteStateBeforeTransition object.
+        """
+        return ConcreteStateBeforeTransition(self)
+    
+    def after(self):
+        """
+        Instantiate a ConcreteStateBeforeTransition object.
+        """
+        return ConcreteStateAfterTransition(self)
 
 """
 Types of variables.
@@ -218,6 +230,28 @@ class DurationOfTransition():
         if type(other) in [int, float]:
             return DurationOfTransitionGreaterThanConstant(self, other)
 
+class ConcreteStateBeforeTransition(ConcreteStateExpression):
+    """
+    Class to represent the first concrete state in a transition.
+    """
+
+    def __init__(self, transition_expression):
+        self._transition_expression = transition_expression
+    
+    def __repr__(self):
+        return f"{self._transition_expression}.before()"
+
+class ConcreteStateAfterTransition(ConcreteStateExpression):
+    """
+    Class to represent the second concrete state in a transition.
+    """
+
+    def __init__(self, transition_expression):
+        self._transition_expression = transition_expression
+    
+    def __repr__(self):
+        return f"{self._transition_expression}.after()"
+
 """
 Atomic constraints over transitions.
 """
@@ -303,3 +337,19 @@ class NextConcreteStateFromTransition(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.next({self._predicate})"
+
+"""
+Measurement operators.
+"""
+
+class TimeBetween():
+    """
+    Class to represent the timeBetween operator.
+    """
+
+    def __init__(self, concrete_state_expression_1, concrete_state_expression_2):
+        self._concrete_state_expression_1 = concrete_state_expression_1
+        self._concrete_state_expression_2 = concrete_state_expression_2
+    
+    def __repr__(self):
+        return f"timeBetween({self._concrete_state_expression_1}, {self._concrete_state_expression_2})"

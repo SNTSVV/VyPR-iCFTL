@@ -36,3 +36,14 @@ class calls(predicate):
     def during(self, function_name):
         self._during_function = function_name
         return self
+
+class future(predicate):
+    """
+    Class for representing the future predicate for use in quantifiers (which is based on either changes or calls).
+    """
+
+    def __init__(self, predicate):
+        self._predicate = predicate
+    
+    def __repr__(self):
+        return f"future({self._predicate})"

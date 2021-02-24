@@ -12,8 +12,8 @@ There can arbitrarily many Forall instances nested.
 The final instance in the chain must be a Constraint instance.  This has recursive structure (based on the grammar of iCFTL).
 """
 
-from VyPR.Specifications.predicates import changes, calls
-from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable, Conjunction, Disjunction, Negation
+from VyPR.Specifications.predicates import changes, calls, future
+from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable, Conjunction, Disjunction, Negation, TimeBetween
 
 class Specification():
     """
@@ -55,6 +55,11 @@ class Specification():
                     variable_to_obj[current_obj.variable] = ConcreteStateVariable(current_obj.variable)
                 elif type(current_obj.predicate) is calls:
                     variable_to_obj[current_obj.variable] = TransitionVariable(current_obj.variable)
+                elif type(current_obj.predicate) is future:
+                    if type(current_obj.predicate._predicate) is changes:
+                        variable_to_obj[current_obj.variable] = ConcreteStateVariable(current_obj.variable)
+                    elif type(current_obj.predicate._predicate) is calls:
+                        variable_to_obj[current_obj.variable] = TransitionVariable(current_obj.variable)
                 # in the case of a quantifier, the two possibilities are
                 # that the next item to consider is a quantifier or a constraint
                 if current_obj.quantifier:
@@ -63,6 +68,8 @@ class Specification():
                     # if we arrive at a constraint, the loop
                     # will stop at the next ieration
                     current_obj = current_obj.constraint
+        
+        print(variable_to_obj)
         
         return variable_to_obj
 
@@ -77,7 +84,7 @@ class Specification():
 
         # check the type of the value
         predicate = list(quantified_variable.values())[0]
-        if type(predicate) not in [changes, calls]:
+        if type(predicate) not in [changes, calls, future]:
             raise Exception(f"Type '{type(predicate).__name__}' not supported.")
 
         # make sure the predicate is complete
@@ -124,10 +131,16 @@ class Forall():
         if len(quantified_variable.keys()) > 1:
             raise Exception("A single variable must be given for each level of universal quantification.")
 
-        # check the type of the value
-        predicate = quantified_variable.values()[0]
-        if type(predicate) not in [changes, calls]:
+        # check the type of the value - this is not the first quantifier,
+        # so the type must be future
+        predicate = list(quantified_variable.values())[0]
+        if type(predicate) is not future:
             raise Exception(f"Type '{type(predicate).__name__}' not supported.")
+
+        # make sure the predicate is complete
+        variable = list(quantified_variable.keys())[0]
+        if not predicate._predicate._during_function:
+            raise Exception(f"Predicate used for variable {variable} not complete")
 
         # store the quantifier
         self.quantifier = Forall(self._specification_obj, **quantified_variable)
@@ -195,3 +208,6 @@ def not_true(operand):
     else:
         # assume operand is atomic constraint
         return Negation(operand)
+
+def timeBetween(concrete_state_expression_1, concrete_state_expression_2):
+    return TimeBetween(concrete_state_expression_1, concrete_state_expression_2)
