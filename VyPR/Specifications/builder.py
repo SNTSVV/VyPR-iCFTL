@@ -69,8 +69,6 @@ class Specification():
                     # will stop at the next ieration
                     current_obj = current_obj.constraint
         
-        print(variable_to_obj)
-        
         return variable_to_obj
 
     def forall(self, **quantified_variable):
