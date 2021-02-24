@@ -10,11 +10,35 @@ q(x) < 10 is a constraint and is represented using the classes in this module.
 
 from VyPR.Specifications.predicates import changes, calls
 
+class Constraint():
+    """
+    Class for representing the recursive structure of the quantifier-free part of iCFTL specifications.
+    """
+
+    def __init__(self, specification_obj, expression):
+        self._specification_obj = specification_obj
+        self._expression = expression
+    
+    def __repr__(self):
+        arguments = self._specification_obj.get_variable_to_obj_map()
+        executed_lambda = self._expression(**arguments)
+        if ConstraintBase not in type(executed_lambda).__bases__:
+            # TODO: indicate which part of the constraint is not complete
+            raise Exception("Constraint given in specification is not complete.")
+        return str(executed_lambda)
+
+class ConstraintBase():
+    """
+    Class for representing the root of a combination of constraints.
+    """
+
+    pass
+
 """
 Propositional connectives.
 """
 
-class Conjunction():
+class Conjunction(ConstraintBase):
     """
     Class to represent a conjunction of 2 or more constraints.
     """
@@ -29,7 +53,7 @@ class Conjunction():
     def get_conjuncts(self) -> list:
         return self._conjuncts
 
-class Disjunction():
+class Disjunction(ConstraintBase):
     """
     Class to represent a disjunction of 2 or more constraints.
     """
@@ -44,7 +68,7 @@ class Disjunction():
     def get_disjuncts(self) -> list:
         return self._disjuncts
 
-class Negation():
+class Negation(ConstraintBase):
     """
     Class to represent the negation.
 
@@ -170,9 +194,9 @@ class ValueInConcreteState():
 Atomic constraints for concrete states.
 """
 
-class ValueInConcreteStateEqualsConstant():
+class ValueInConcreteStateEqualsConstant(ConstraintBase):
     """
-    Class to represent the atom q(x) == n for a concrete state variable q, a program variable x
+    Class to represent the atomic constraint q(x) == n for a concrete state variable q, a program variable x
     and a constant n.
     """
 
@@ -183,9 +207,9 @@ class ValueInConcreteStateEqualsConstant():
     def __repr__(self):
         return f"{self._value_expression}.equals({self._constant})"
 
-class ValueInConcreteStateLessThanConstant():
+class ValueInConcreteStateLessThanConstant(ConstraintBase):
     """
-    Class to represent the atom q(x) < n for a concrete state variable q, a program variable x
+    Class to represent the atomic constraint q(x) < n for a concrete state variable q, a program variable x
     and a constant n.
     """
 
@@ -196,9 +220,9 @@ class ValueInConcreteStateLessThanConstant():
     def __repr__(self):
         return f"{self._value_expression} < {self._constant}"
 
-class ValueInConcreteStateGreaterThanConstant():
+class ValueInConcreteStateGreaterThanConstant(ConstraintBase):
     """
-    Class to represent the atom q(x) > n for a concrete state variable q, a program variable x
+    Class to represent the atomic constraint q(x) > n for a concrete state variable q, a program variable x
     and a constant n.
     """
 
@@ -256,7 +280,7 @@ class ConcreteStateAfterTransition(ConcreteStateExpression):
 Atomic constraints over transitions.
 """
 
-class DurationOfTransitionLessThanConstant():
+class DurationOfTransitionLessThanConstant(ConstraintBase):
     """
     Class to represent the comparison of a transition duration with a constant.
     """
@@ -268,7 +292,7 @@ class DurationOfTransitionLessThanConstant():
     def __repr__(self):
         return f"{self._transition_duration} < {self._constant}"
 
-class DurationOfTransitionGreaterThanConstant():
+class DurationOfTransitionGreaterThanConstant(ConstraintBase):
     """
     Class to represent the comparison of a transition duration with a constant.
     """
@@ -286,7 +310,7 @@ Temporal operators.
 
 class NextTransitionFromConcreteState(TransitionExpression):
     """
-    Class to represent the atom X.next(P) for a concrete state expression X and a predicate P
+    Class to represent the atomic constraint X.next(P) for a concrete state expression X and a predicate P
     identifying transitions.
     """
 
@@ -300,7 +324,7 @@ class NextTransitionFromConcreteState(TransitionExpression):
 
 class NextConcreteStateFromConcreteState(ConcreteStateExpression):
     """
-    Class to represent the atom X.next(P) for a concrete state expression X and a predicate P
+    Class to represent the atomic constraint X.next(P) for a concrete state expression X and a predicate P
     identifying concrete states.
     """
 
@@ -313,7 +337,7 @@ class NextConcreteStateFromConcreteState(ConcreteStateExpression):
 
 class NextTransitionFromTransition(TransitionExpression):
     """
-    Class to represent the atom X.next(P) for a concrete state expression X and a predicate P
+    Class to represent the atomic constraint X.next(P) for a concrete state expression X and a predicate P
     identifying transitions.
     """
 
@@ -327,7 +351,7 @@ class NextTransitionFromTransition(TransitionExpression):
 
 class NextConcreteStateFromTransition(ConcreteStateExpression):
     """
-    Class to represent the atom X.next(P) for a concrete state expression X and a predicate P
+    Class to represent the atomic constraint X.next(P) for a concrete state expression X and a predicate P
     identifying concrete states.
     """
 
@@ -348,8 +372,27 @@ class TimeBetween():
     """
 
     def __init__(self, concrete_state_expression_1, concrete_state_expression_2):
+        if (ConcreteStateExpression not in type(concrete_state_expression_1).__bases__
+            or ConcreteStateExpression not in type(concrete_state_expression_2).__bases__):
+            raise Exception("timeBetween arguments must be states.")
         self._concrete_state_expression_1 = concrete_state_expression_1
         self._concrete_state_expression_2 = concrete_state_expression_2
     
     def __repr__(self):
         return f"timeBetween({self._concrete_state_expression_1}, {self._concrete_state_expression_2})"
+    
+    def __lt__(self, other):
+        if type(other) in [int, float]:
+            return TimeBetweenLessThanConstant(self, other)
+
+class TimeBetweenLessThanConstant(ConstraintBase):
+    """
+    Class to represent the atomic constraint timeBetween(q, q') < n for some numerical constant n.
+    """
+
+    def __init__(self, time_between_expression, constant):
+        self._time_between_expression = time_between_expression
+        self._constant = constant
+    
+    def __repr__(self):
+        return f"{self._time_between_expression} < {self._constant}"

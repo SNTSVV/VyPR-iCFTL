@@ -13,7 +13,7 @@ The final instance in the chain must be a Constraint instance.  This has recursi
 """
 
 from VyPR.Specifications.predicates import changes, calls, future
-from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable, Conjunction, Disjunction, Negation, TimeBetween
+from VyPR.Specifications.constraints import Constraint, ConcreteStateVariable, TransitionVariable, Conjunction, Disjunction, Negation, TimeBetween
 
 class Specification():
     """
@@ -158,20 +158,6 @@ class Forall():
         self.constraint = Constraint(self._specification_obj, expression)
 
         return self._specification_obj
-
-
-class Constraint():
-    """
-    The class for representing the recursive structure of the quantifier-free part of iCFTL specifications.
-    """
-
-    def __init__(self, specification_obj, expression):
-        self._specification_obj = specification_obj
-        self._expression = expression
-    
-    def __repr__(self):
-        arguments = self._specification_obj.get_variable_to_obj_map()
-        return str(self._expression(**arguments))
 
 """
 Syntax sugar functions.

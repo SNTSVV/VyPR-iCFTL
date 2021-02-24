@@ -40,7 +40,7 @@ specification3 = Specification()\
     .forall(c = future(calls('f').during('func2')))\
     .check(
         lambda q, c : (
-            timeBetween(q, c.after())
+            timeBetween(q, c.after()) < 4.2
         )
     )
 
