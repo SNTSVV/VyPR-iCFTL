@@ -50,7 +50,11 @@ class Specification():
                 current_obj = current_obj.quantifier
             elif type(current_obj) is Forall:
                 # first, add to the map
-                variable_to_obj[current_obj.variable] = current_obj.predicate.get_quantifier_variable(current_obj.variable)
+                # we check the type of the predicate so we know what kind of variable to instantiate
+                if type(current_obj.predicate) is changes:
+                    variable_to_obj[current_obj.variable] = ConcreteStateVariable(current_obj.variable)
+                elif type(current_obj.predicate) is calls:
+                    variable_to_obj[current_obj.variable] = TransitionVariable(current_obj.variable)
                 # in the case of a quantifier, the two possibilities are
                 # that the next item to consider is a quantifier or a constraint
                 if current_obj.quantifier:

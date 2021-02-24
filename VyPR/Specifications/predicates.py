@@ -2,8 +2,6 @@
 Module containing classes that model iCFTL predicates.
 """
 
-from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable
-
 class predicate():
     pass
 
@@ -22,13 +20,6 @@ class changes(predicate):
     def during(self, function_name):
         self._during_function = function_name
         return self
-    
-    def get_quantifier_variable(self, variable_name):
-        """
-        Returns an instance of an object representing the variable that
-        would be bound to this predicate in a specification.
-        """
-        return ConcreteStateVariable(variable_name)
 
 class calls(predicate):
     """
@@ -45,10 +36,3 @@ class calls(predicate):
     def during(self, function_name):
         self._during_function = function_name
         return self
-    
-    def get_quantifier_variable(self, variable_name):
-        """
-        Returns an instance of an object representing the variable that
-        would be bound to this predicate in a specification.
-        """
-        return TransitionVariable(variable_name)

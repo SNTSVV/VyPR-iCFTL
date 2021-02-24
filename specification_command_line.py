@@ -10,14 +10,10 @@ specification1 = Specification()\
     .check(
         lambda q : (
             not_true(
-                one_is_true(
-                    not_true(
-                        all_are_true(
-                            q('a') < 10,
-                            q('a') > 5
-                        )
-                    ),
-                    q('a') < 1
+                all_are_true(
+                    q('a') < 10,
+                    q('a') > 5,
+                    q.next(calls('f').during('func2'))
                 )
             )
         )
@@ -27,6 +23,13 @@ print(specification1)
 
 specification2 = Specification()\
     .forall(c = calls("func").during("func1"))\
-    .check(lambda c : c.duration() < 1)
+    .check(
+        lambda c : (
+            all_are_true(
+                c.duration() < 1,
+                c.next(changes('flag').during('func2'))('flag').equals(True)
+            )
+        )
+    )
 
 print(specification2)
