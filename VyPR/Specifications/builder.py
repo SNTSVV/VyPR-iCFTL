@@ -50,7 +50,7 @@ class Specification():
                 current_obj = current_obj.quantifier
             elif type(current_obj) is Forall:
                 # first, add to the map
-                variable_to_obj[current_obj.variable] = current_obj.predicate.get_associated_variable(current_obj.variable)
+                variable_to_obj[current_obj.variable] = current_obj.predicate.get_quantifier_variable(current_obj.variable)
                 # in the case of a quantifier, the two possibilities are
                 # that the next item to consider is a quantifier or a constraint
                 if current_obj.quantifier:
@@ -75,6 +75,11 @@ class Specification():
         predicate = list(quantified_variable.values())[0]
         if type(predicate) not in [changes, calls]:
             raise Exception(f"Type '{type(predicate).__name__}' not supported.")
+
+        # make sure the predicate is complete
+        variable = list(quantified_variable.keys())[0]
+        if not predicate._during_function:
+            raise Exception(f"Predicate used for variable {variable} not complete")
 
         # store the quantifier
         self.quantifier = Forall(self, **quantified_variable)

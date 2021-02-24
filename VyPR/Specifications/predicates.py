@@ -14,14 +14,16 @@ class changes(predicate):
 
     def __init__(self, variable):
         self._variable = variable
+        self._during_function = None
     
     def __repr__(self):
-        return f"changes({self._variable})"
+        return f"changes({self._variable}).during({self._during_function})"
     
     def during(self, function_name):
         self._during_function = function_name
+        return self
     
-    def get_associated_variable(self, variable_name):
+    def get_quantifier_variable(self, variable_name):
         """
         Returns an instance of an object representing the variable that
         would be bound to this predicate in a specification.
@@ -35,14 +37,16 @@ class calls(predicate):
 
     def __init__(self, function_name):
         self._function_name = function_name
+        self._during_function = None
     
     def __repr__(self):
-        return f"calls({self._function_name})"
+        return f"calls({self._function_name}).during({self._during_function})"
     
     def during(self, function_name):
         self._during_function = function_name
+        return self
     
-    def get_associated_variable(self, variable_name):
+    def get_quantifier_variable(self, variable_name):
         """
         Returns an instance of an object representing the variable that
         would be bound to this predicate in a specification.

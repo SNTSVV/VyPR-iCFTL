@@ -7,7 +7,7 @@ from VyPR.Specifications.predicates import changes, calls
 
 specification = \
     Specification()\
-    .forall(q = changes("x"))\
-    .check(lambda q : q('x') < 10)
+    .forall(q = changes("a").during("func1"))\
+    .check(lambda q : q('a') < 10)
 
 print(specification)
