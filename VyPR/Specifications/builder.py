@@ -13,7 +13,7 @@ The final instance in the chain must be a Constraint instance.  This has recursi
 """
 
 from VyPR.Specifications.predicates import changes, calls
-from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable
+from VyPR.Specifications.constraints import ConcreteStateVariable, TransitionVariable, Conjunction, Disjunction, Negation
 
 class Specification():
     """
@@ -157,3 +157,37 @@ class Constraint():
     def __repr__(self):
         arguments = self._specification_obj.get_variable_to_obj_map()
         return str(self._expression(**arguments))
+
+"""
+Syntax sugar functions.
+"""
+
+def all_are_true(*conjuncts):
+    """
+    Encode a conjunction.
+    """
+    return Conjunction(*conjuncts)
+
+def one_is_true(*disjuncts):
+    """
+    Encode a disjunction.
+    """
+    return Disjunction(*disjuncts)
+
+def not_true(operand):
+    """
+    Given an operand, instantiate either a single negation,
+    or another structure by propagating negation through to atomic constraints.
+    """
+    if type(operand) is Conjunction:
+        # rewrite negation of conjunction as disjunction of negations
+        return Disjunction(*map(lambda conjunct : not_true(conjunct), operand.get_conjuncts()))
+    elif type(operand) is Disjunction:
+        # rewrite negation of disjunction as conjunction of negations
+        return Conjunction(*map(lambda disjunct : not_true(disjunct), operand.get_disjuncts()))
+    elif type(operand) is Negation:
+        # eliminate double negation
+        return operand.get_operand()
+    else:
+        # assume operand is atomic constraint
+        return Negation(operand)
