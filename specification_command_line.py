@@ -5,6 +5,10 @@ Module for command line interface with specification building package.
 from VyPR.Specifications.builder import Specification, all_are_true, one_is_true, not_true, timeBetween
 from VyPR.Specifications.predicates import changes, calls, future
 
+# initialise logging
+import VyPR.Logging.logger as logger
+logger.initialise_logging(directory="logs/specification/")
+
 specification1 = Specification()\
     .forall(q = changes("a").during("func1"))\
     .check(
@@ -45,3 +49,6 @@ specification3 = Specification()\
     )
 
 print(specification3)
+
+# end logging
+logger.log.close()

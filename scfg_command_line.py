@@ -8,6 +8,10 @@ import argparse
 
 from VyPR.SCFG.module_processor import ModuleProcessor
 
+# initialise logging
+import VyPR.Logging.logger as logger
+logger.initialise_logging(directory="logs/scfg/")
+
 # define command line arguments
 parser = argparse.ArgumentParser(description="Command line interface for SCFG construction package.")
 parser.add_argument("--source-file", type=str, required=True, action="append", help="The file containing the code for which we will generate SCFGs.")
@@ -37,3 +41,6 @@ for filename in args.source_file:
         scfg_file = f"scfgs/{function_name}.gv"
         function_name_to_scfg[function_name].write_to_file(scfg_file)
         print(f"SCFG for function '{function_name}' written to file '{scfg_file}.pdf'")
+
+# close logging
+logger.log.close()

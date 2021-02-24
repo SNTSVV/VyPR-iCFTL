@@ -6,11 +6,7 @@ import ast
 import datetime
 import graphviz
 
-# temporary solution to logging
-h = open(f"logs/scfg/log-{datetime.datetime.now()}", "a")
-def log(s):
-    global h
-    h.write(f"[{datetime.datetime.now()}] {s}\n")
+import VyPR.Logging.logger as logger
 
 class SymbolicState():
     """
@@ -28,17 +24,17 @@ class SymbolicState():
         """
         Add a child symbolic state to self.
         """
-        log(f"Add {child_symbolic_state} as child of {self}")
+        logger.log.info(f"Add {child_symbolic_state} as child of {self}")
         self._children.append(child_symbolic_state)
         # also set self as parent of child
-        log(f"...also setting {self} as parent of {child_symbolic_state}")
+        logger.log.info(f"...also setting {self} as parent of {child_symbolic_state}")
         child_symbolic_state.add_parent(self)
     
     def add_parent(self, parent_symbolic_state):
         """
         Add a parent symbolic state to self.
         """
-        log(f"Add {parent_symbolic_state} as child of {self}")
+        logger.log.info(f"Add {parent_symbolic_state} as child of {self}")
         self._parents.append(parent_symbolic_state)
     
     def get_children(self) -> list:
@@ -148,11 +144,11 @@ class SCFG():
         # iterate through the current subprogram
         for subprogram_ast in subprogram:
 
-            log(f"Processing AST {subprogram_ast}")
+            logger.log.info(f"Processing AST {subprogram_ast}")
 
             # check for the type of the current ast
             if type(subprogram_ast) in [ast.Assign, ast.Expr]:
-                log(f"AST {subprogram_ast} is {type(subprogram_ast)} instance")
+                logger.log.info(f"AST {subprogram_ast} is {type(subprogram_ast)} instance")
                 # define dictionary from ast types to the processing method to use
                 ast_type_to_function = {
                     ast.Assign: self._process_assignment_ast,
@@ -162,47 +158,47 @@ class SCFG():
                 new_symbolic_state: SymbolicState = ast_type_to_function[type(subprogram_ast)](subprogram_ast)
                 # add it to the list of vertices
                 self._symbolic_states.append(new_symbolic_state)
-                log(f"Instantiated symbolic state {new_symbolic_state} and added to list of symbolic states for SCFG.")
+                logger.log.info(f"Instantiated symbolic state {new_symbolic_state} and added to list of symbolic states for SCFG.")
                 # set it as the child of the previous
-                log(f"Setting Symbolic State {new_symbolic_state} as child of {previous_symbolic_state}")
+                logger.log.info(f"Setting Symbolic State {new_symbolic_state} as child of {previous_symbolic_state}")
                 previous_symbolic_state.add_child(new_symbolic_state)
-                log(f"Setting previous symbolic state to {new_symbolic_state}")
+                logger.log.info(f"Setting previous symbolic state to {new_symbolic_state}")
                 previous_symbolic_state = new_symbolic_state
 
             
             elif type(subprogram_ast) is ast.If:
-                log(f"AST {subprogram_ast} is ast.If instance")
+                logger.log.info(f"AST {subprogram_ast} is ast.If instance")
 
                 # deal with the main body of the conditional
 
                 # instantiate symbolic states for entry and exit
-                log(f"Setting up conditional entry and exit symbolic states")
+                logger.log.info(f"Setting up conditional entry and exit symbolic states")
                 entry_symbolic_state: ConditionalEntrySymbolicState = ConditionalEntrySymbolicState(subprogram_ast)
                 exit_symbolic_state: ConditionalExitSymbolicState = ConditionalExitSymbolicState()
                 self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
-                log(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
+                logger.log.info(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
                 # set the entry symbolic state as a child of the previous
-                log(f"Adding {entry_symbolic_state} as a child of {previous_symbolic_state}")
+                logger.log.info(f"Adding {entry_symbolic_state} as a child of {previous_symbolic_state}")
                 previous_symbolic_state.add_child(entry_symbolic_state)
                 # recursive on the conditional body
-                log(f"Recursing on body of conditional, linking to parent {entry_symbolic_state}")
+                logger.log.info(f"Recursing on body of conditional, linking to parent {entry_symbolic_state}")
                 final_body_symbolic_state = self.subprogram_to_scfg(subprogram_ast.body, entry_symbolic_state)
                 # set the exit symbolic state as a child of the final one from the body
-                log(f"Setting {exit_symbolic_state} as child of block")
+                logger.log.info(f"Setting {exit_symbolic_state} as child of block")
                 final_body_symbolic_state.add_child(exit_symbolic_state)
 
                 # check for orelse block
                 # if there is none, set the conditional exit vertex as a child of the entry vertex
                 # if there is, process it as a separate block
-                log(f"Checking for existence of orelse block in conditional")
+                logger.log.info(f"Checking for existence of orelse block in conditional")
                 if len(subprogram_ast.orelse) != 0:
-                    log(f"An orelse block was found - recursing with parent {entry_symbolic_state}")
+                    logger.log.info(f"An orelse block was found - recursing with parent {entry_symbolic_state}")
                     # there is an orelse block - process it
                     final_orelse_symbolic_state = self.subprogram_to_scfg(subprogram_ast.orelse, entry_symbolic_state)
                     # link final state with exit state
                     final_orelse_symbolic_state.add_child(exit_symbolic_state)
                 else:
-                    log(f"No orelse block was found - adding {exit_symbolic_state} as child of {entry_symbolic_state}")
+                    logger.log.info(f"No orelse block was found - adding {exit_symbolic_state} as child of {entry_symbolic_state}")
                     # there is no orelse block
                     entry_symbolic_state.add_child(exit_symbolic_state)
                 
@@ -210,65 +206,65 @@ class SCFG():
                 previous_symbolic_state = exit_symbolic_state
             
             elif type(subprogram_ast) is ast.For:
-                log(f"AST {subprogram_ast} is ast.For instance")
+                logger.log.info(f"AST {subprogram_ast} is ast.For instance")
 
                 # deal with the body of the for loop
 
                 # instantiate symbolic states for entry and exit
-                log(f"Setting up for-loop entry and exit symbolic states")
+                logger.log.info(f"Setting up for-loop entry and exit symbolic states")
                 # derive the list of names of program variables used as loop counters
                 loop_counter_variables = self._extract_symbol_names_from_target(subprogram_ast.target)
-                log(f"Loop counter variables used by the loop are {loop_counter_variables}")
+                logger.log.info(f"Loop counter variables used by the loop are {loop_counter_variables}")
                 # instantiate states
                 entry_symbolic_state: ForLoopEntrySymbolicState = ForLoopEntrySymbolicState(loop_counter_variables, subprogram_ast)
                 exit_symbolic_state: ForLoopExitSymbolicState = ForLoopExitSymbolicState()
                 self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
-                log(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
+                logger.log.info(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
                 # set the entry symbolic state as a child of the previous
-                log(f"Adding {entry_symbolic_state} as a child of {previous_symbolic_state}")
+                logger.log.info(f"Adding {entry_symbolic_state} as a child of {previous_symbolic_state}")
                 previous_symbolic_state.add_child(entry_symbolic_state)
                 # recursive on the loop body
-                log(f"Recursing on body of loop, linking to parent {entry_symbolic_state}")
+                logger.log.info(f"Recursing on body of loop, linking to parent {entry_symbolic_state}")
                 final_body_symbolic_state = self.subprogram_to_scfg(subprogram_ast.body, entry_symbolic_state)
                 # set the exit symbolic state as a child of the final one from the body
-                log(f"Setting {exit_symbolic_state} as child of block")
+                logger.log.info(f"Setting {exit_symbolic_state} as child of block")
                 final_body_symbolic_state.add_child(exit_symbolic_state)
                 # set for loop entry symbolic state as child of final state in body
-                log(f"Setting entry symbolic state {entry_symbolic_state} as child of final state {final_body_symbolic_state}")
+                logger.log.info(f"Setting entry symbolic state {entry_symbolic_state} as child of final state {final_body_symbolic_state}")
                 final_body_symbolic_state.add_child(entry_symbolic_state)
                 
                 # update the previous symbolic state for the next iteration
                 previous_symbolic_state = exit_symbolic_state
             
             elif type(subprogram_ast) is ast.While:
-                log(f"AST {subprogram_ast} is ast.While instance")
+                logger.log.info(f"AST {subprogram_ast} is ast.While instance")
 
                 # deal with the body of the while loop
 
                 # instantiate symbolic states while entry and exit
-                log(f"Setting up while-loop entry and exit symbolic states")
+                logger.log.info(f"Setting up while-loop entry and exit symbolic states")
                 # instantiate states
                 entry_symbolic_state: WhileLoopEntrySymbolicState = WhileLoopEntrySymbolicState(subprogram_ast)
                 exit_symbolic_state: WhileLoopExitSymbolicState = WhileLoopExitSymbolicState()
                 self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
-                log(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
+                logger.log.info(f"Entry state is {entry_symbolic_state} and exit state is {exit_symbolic_state}")
                 # set the entry symbolic state as a child of the previous
-                log(f"Adding {entry_symbolic_state} as a child of {previous_symbolic_state}")
+                logger.log.info(f"Adding {entry_symbolic_state} as a child of {previous_symbolic_state}")
                 previous_symbolic_state.add_child(entry_symbolic_state)
                 # recursive on the loop body
-                log(f"Recursing on body of loop, linking to parent {entry_symbolic_state}")
+                logger.log.info(f"Recursing on body of loop, linking to parent {entry_symbolic_state}")
                 final_body_symbolic_state = self.subprogram_to_scfg(subprogram_ast.body, entry_symbolic_state)
                 # set the exit symbolic state as a child of the final one from the body
-                log(f"Setting {exit_symbolic_state} as child of block")
+                logger.log.info(f"Setting {exit_symbolic_state} as child of block")
                 final_body_symbolic_state.add_child(exit_symbolic_state)
                 # set for loop entry symbolic state as child of final state in body
-                log(f"Setting entry symbolic state {entry_symbolic_state} as child of final state {final_body_symbolic_state}")
+                logger.log.info(f"Setting entry symbolic state {entry_symbolic_state} as child of final state {final_body_symbolic_state}")
                 final_body_symbolic_state.add_child(entry_symbolic_state)
                 
                 # update the previous symbolic state for the next iteration
                 previous_symbolic_state = exit_symbolic_state
             
-            log(f"Moving to next iteration with previous state {previous_symbolic_state}")
+            logger.log.info(f"Moving to next iteration with previous state {previous_symbolic_state}")
         
         # return the final symbolic state from this subprogram
         return previous_symbolic_state
@@ -278,7 +274,7 @@ class SCFG():
         """
         Write a dot file of the SCFG.
         """
-        log(f"Writing graph file for SCFG.")
+        logger.log.info(f"Writing graph file for SCFG.")
         # instantiate directed graph
         graph = graphviz.Digraph()
         graph.attr("graph", splines="true", fontsize="10")
@@ -286,7 +282,7 @@ class SCFG():
         # iterate through symbolic states, draw edges between those that are linked
         # by child/parent
         for symbolic_state in self._symbolic_states:
-            log(f"  Processing symbolic state {symbolic_state}")
+            logger.log.info(f"  Processing symbolic state {symbolic_state}")
             if type(symbolic_state) is StatementSymbolicState:
                 graph.node(str(id(symbolic_state)), str(symbolic_state.get_symbols_changed()), shape=shape)
             elif type(symbolic_state) is ForLoopEntrySymbolicState:
@@ -299,7 +295,7 @@ class SCFG():
                     str(id(child))
                 )
         graph.render(filename)
-        log(f"SCFG written to file {filename}")
+        logger.log.info(f"SCFG written to file {filename}")
     
     def _process_assignment_ast(self, stmt_ast: ast.Assign):
         """
@@ -308,23 +304,23 @@ class SCFG():
         The target program variables, along with any functions called on the right-hand-side
         of the assignment, will be included as symbols changed by that Symbolic State
         """
-        log(f"Instantiating symbolic state for AST instance {stmt_ast}")
+        logger.log.info(f"Instantiating symbolic state for AST instance {stmt_ast}")
         # determine the program variables assigned on the left-hand-side
         targets: list = stmt_ast.targets
         # extract names - for now just care about normal program variables, not attributes or functions
         target_names: list = []
         for target in targets:
             target_names += self._extract_symbol_names_from_target(target)
-        log(f"List of all program variables changed is {target_names}")
+        logger.log.info(f"List of all program variables changed is {target_names}")
         # extract function names
         assigned_value = stmt_ast.value
         function_names: list = self._extract_function_names(assigned_value)
-        log(f"List of all program functions called is {function_names}")
+        logger.log.info(f"List of all program functions called is {function_names}")
         # merge the two lists of symbols
         all_symbols: list = target_names + function_names
-        log(f"List of all symbols to mark as changed in the symbolic state is {all_symbols}")
+        logger.log.info(f"List of all symbols to mark as changed in the symbolic state is {all_symbols}")
         # set up a SymbolicState instance
-        log(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
+        logger.log.info(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
         symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     
@@ -334,7 +330,7 @@ class SCFG():
 
         TODO: handle more complex ast structures for forming names, for example obj.subobj.var.
         """
-        log(f"Instantiating a symbolic state for AST instance {stmt_ast}")
+        logger.log.info(f"Instantiating a symbolic state for AST instance {stmt_ast}")
         # initialise empty list of symbols
         all_symbols: list = []
         # walk the ast to find the symbols used
@@ -344,7 +340,7 @@ class SCFG():
                 all_symbols.append(walked_ast.id)
         
         # instantiate symbolic state
-        log(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
+        logger.log.info(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
         symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     

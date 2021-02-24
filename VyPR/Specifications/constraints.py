@@ -9,6 +9,7 @@ q(x) < 10 is a constraint and is represented using the classes in this module.
 """
 
 from VyPR.Specifications.predicates import changes, calls
+import VyPR.Logging.logger as logger
 
 class Constraint():
     """
@@ -24,6 +25,8 @@ class Constraint():
         executed_lambda = self._expression(**arguments)
         if ConstraintBase not in type(executed_lambda).__bases__:
             # TODO: indicate which part of the constraint is not complete
+            logger.log.info("Constraint given in specification is not complete:")
+            logger.log.info(str(executed_lambda))
             raise Exception("Constraint given in specification is not complete.")
         return str(executed_lambda)
 
