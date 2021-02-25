@@ -13,7 +13,28 @@ The final instance in the chain must be a Constraint instance.  This has recursi
 """
 
 from VyPR.Specifications.predicates import changes, calls, future
-from VyPR.Specifications.constraints import Constraint, ConcreteStateVariable, TransitionVariable, Conjunction, Disjunction, Negation, TimeBetween
+from VyPR.Specifications.constraints import (Constraint,
+                                            ConstraintBase,
+                                            ConcreteStateExpression,
+                                            TransitionExpression,
+                                            ConcreteStateVariable,
+                                            TransitionVariable,
+                                            Conjunction,
+                                            Disjunction,
+                                            Negation,
+                                            TimeBetween,
+                                            ValueInConcreteStateEqualsConstant,
+                                            ValueInConcreteStateLessThanConstant,
+                                            ValueInConcreteStateGreaterThanConstant,
+                                            DurationOfTransitionLessThanConstant,
+                                            DurationOfTransitionGreaterThanConstant,
+                                            ConcreteStateBeforeTransition,
+                                            ConcreteStateAfterTransition,
+                                            NextTransitionFromConcreteState,
+                                            NextConcreteStateFromConcreteState,
+                                            NextTransitionFromTransition,
+                                            NextConcreteStateFromTransition,
+                                            TimeBetweenLessThanConstant)
 import VyPR.Logging.logger as logger
 
 class Specification():
@@ -23,13 +44,16 @@ class Specification():
 
     def __init__(self):
         logger.log.info("Instantiating new specification...")
-        self.quantifier = None
+        self._quantifier = None
     
     def __repr__(self):
         """
         Construct the string representation recursively.
         """
-        return f"{self.quantifier}"
+        return f"{self._quantifier}"
+    
+    def get_quantifier(self):
+        return self._quantifier
     
     def get_variable_to_obj_map(self) -> dict:
         """
@@ -52,31 +76,86 @@ class Specification():
             logger.log.info(f"Processing {type(current_obj)} instance")
             # traverse depending on the type of the current object
             if type(current_obj) is Specification:
-                current_obj = current_obj.quantifier
+                current_obj = current_obj._quantifier
             elif type(current_obj) is Forall:
                 # first, add to the map
                 # we check the type of the predicate so we know what kind of variable to instantiate
-                if type(current_obj.predicate) is changes:
-                    variable_to_obj[current_obj.variable] = ConcreteStateVariable(current_obj.variable)
-                elif type(current_obj.predicate) is calls:
-                    variable_to_obj[current_obj.variable] = TransitionVariable(current_obj.variable)
-                elif type(current_obj.predicate) is future:
-                    if type(current_obj.predicate._predicate) is changes:
-                        variable_to_obj[current_obj.variable] = ConcreteStateVariable(current_obj.variable)
-                    elif type(current_obj.predicate._predicate) is calls:
-                        variable_to_obj[current_obj.variable] = TransitionVariable(current_obj.variable)
+                if type(current_obj._predicate) is changes:
+                    variable_to_obj[current_obj._variable] = ConcreteStateVariable(current_obj._variable)
+                elif type(current_obj._predicate) is calls:
+                    variable_to_obj[current_obj._variable] = TransitionVariable(current_obj._variable)
+                elif type(current_obj._predicate) is future:
+                    if type(current_obj._predicate._predicate) is changes:
+                        variable_to_obj[current_obj._variable] = ConcreteStateVariable(current_obj._variable)
+                    elif type(current_obj._predicate._predicate) is calls:
+                        variable_to_obj[current_obj._variable] = TransitionVariable(current_obj._variable)
                 # in the case of a quantifier, the two possibilities are
                 # that the next item to consider is a quantifier or a constraint
-                if current_obj.quantifier:
-                    current_obj = current_obj.quantifier
+                if current_obj._quantifier:
+                    current_obj = current_obj._quantifier
                 else:
                     # if we arrive at a constraint, the loop
                     # will stop at the next ieration
-                    current_obj = current_obj.constraint
+                    current_obj = current_obj._constraint
         
         logger.log.info(f"Map is {variable_to_obj}")
         
         return variable_to_obj
+    
+    def get_function_names_used(self):
+        """
+        Traverse the specification and, each time a predicate is encountered, extract the function
+        name used and add to the list.
+        """
+        # initialise an empty list of function names
+        all_function_names = []
+        # initialise stack wth top-level Specification object for traversal
+        stack = [self]
+        # process the stack while it is not empty
+        while len(stack) > 0:
+            # get the top element from the stack
+            top = stack.pop()
+            # based on the type, add child elements to the stack or add a new function name
+            # to the list
+            if type(top) in [changes, calls]:
+                all_function_names.append(top._during_function)
+            elif type(top) is future:
+                stack.append(top.get_predicate())
+            elif type(top) is Specification:
+                stack.append(top.get_quantifier())
+            elif type(top) is Forall:
+                # add the predicate to the stack
+                stack.append(top.get_predicate())
+                # also, carry on traversing the specification
+                if top.get_quantifier():
+                    stack.append(top.get_quantifier())
+                else:
+                    stack.append(top.get_constraint())
+            elif type(top) is Constraint:
+                stack.append(top.get_constraint())
+            elif type(top) is Conjunction:
+                stack += top.get_conjuncts()
+            elif type(top) is Disjunction:
+                stack += top.get_disjuncts()
+            elif type(top) is Negation:
+                stack.append(top.get_operand())
+            elif type(top) in [ValueInConcreteStateEqualsConstant, ValueInConcreteStateLessThanConstant, ValueInConcreteStateGreaterThanConstant]:
+                stack.append(top.get_value_expression().get_concrete_state_expression())
+            elif type(top) in [ConcreteStateBeforeTransition, ConcreteStateAfterTransition]:
+                stack.append(top.get_transition_expression())
+            elif type(top) in [DurationOfTransitionLessThanConstant, DurationOfTransitionGreaterThanConstant]:
+                stack.append(top.get_transition_duration_obj().get_transition_expression())
+            elif type(top) in [NextTransitionFromConcreteState, NextConcreteStateFromConcreteState]:
+                stack.append(top.get_predicate())
+            elif type(top) in [NextTransitionFromTransition, NextConcreteStateFromTransition]:
+                stack.append(top.get_predicate())
+            elif type(top) is TimeBetweenLessThanConstant:
+                # traverse both arguments to the timeBetween operator
+                stack.append(top.get_time_between_expression().get_lhs_concrete_state_expression())
+                stack.append(top.get_time_between_expression().get_rhs_concrete_state_expression())
+            
+        return all_function_names
+
 
     def forall(self, **quantified_variable):
         """
@@ -100,9 +179,9 @@ class Specification():
         logger.log.info(f"Adding quantifier with arguments {quantified_variable}")
 
         # store the quantifier
-        self.quantifier = Forall(self, **quantified_variable)
+        self._quantifier = Forall(self, **quantified_variable)
 
-        return self.quantifier
+        return self._quantifier
 
 class Forall():
     """
@@ -113,21 +192,30 @@ class Forall():
         self._specification_obj = specification_obj
         # we will use the fact that either a constraint or a quantifier is stored
         # to determine what the next thing we will see in the structure of the specification is
-        self.constraint = None
-        self.quantifier = None
+        self._constraint = None
+        self._quantifier = None
         # Note: .keys() does not give a structure with an ordering,
         # so normally converting to a list would be problematic
         # but here we know that there must be one element
-        self.variable = list(quantified_variable.keys())[0]
-        self.predicate = list(quantified_variable.values())[0]
+        self._variable = list(quantified_variable.keys())[0]
+        self._predicate = list(quantified_variable.values())[0]
     
     def __repr__(self):
-        if self.constraint:
+        if self._constraint:
             # this is the last quantifier, so the next thing to turn into a string is a constraint
-            return f"forall {self.variable} in {self.predicate}:\n  {self.constraint}"
+            return f"forall {self._variable} in {self._predicate}:\n  {self._constraint}"
         else:
             # this is not the last quantifier - there is another nested inside
-            return f"forall {self.variable} in {self.predicate}:\n{self.quantifier}"
+            return f"forall {self._variable} in {self._predicate}:\n{self._quantifier}"
+    
+    def get_quantifier(self):
+        return self._quantifier
+    
+    def get_constraint(self):
+        return self._constraint
+    
+    def get_predicate(self):
+        return self._predicate
 
     def forall(self, **quantified_variable):
         """
@@ -152,9 +240,9 @@ class Forall():
         logger.log.info(f"Adding quantifier with arguments {quantified_variable}")
 
         # store the quantifier
-        self.quantifier = Forall(self._specification_obj, **quantified_variable)
+        self._quantifier = Forall(self._specification_obj, **quantified_variable)
 
-        return self.quantifier
+        return self._quantifier
     
     def check(self, expression):
         """
@@ -168,7 +256,7 @@ class Forall():
 
         logger.log.info("Setting constraint to check")
 
-        self.constraint = Constraint(self._specification_obj, expression)
+        self._constraint = Constraint(self._specification_obj, expression)
 
         return self._specification_obj
 

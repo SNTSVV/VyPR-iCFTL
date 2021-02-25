@@ -16,19 +16,30 @@ class Constraint():
     Class for representing the recursive structure of the quantifier-free part of iCFTL specifications.
     """
 
-    def __init__(self, specification_obj, expression):
+    def __init__(self, specification_obj, constraint):
         self._specification_obj = specification_obj
-        self._expression = expression
+        self._constraint = constraint
     
     def __repr__(self):
-        arguments = self._specification_obj.get_variable_to_obj_map()
-        executed_lambda = self._expression(**arguments)
+        executed_lambda = self.instantiate_constraint()
         if ConstraintBase not in type(executed_lambda).__bases__:
             # TODO: indicate which part of the constraint is not complete
             logger.log.info("Constraint given in specification is not complete:")
             logger.log.info(str(executed_lambda))
             raise Exception("Constraint given in specification is not complete.")
         return str(executed_lambda)
+    
+    def instantiate_constraint(self):
+        """
+        Determine the set of variables from quantifiers and instantiate the quantifier-free
+        part of the specification.
+        """
+        arguments = self._specification_obj.get_variable_to_obj_map()
+        executed_lambda = self._constraint(**arguments)
+        return executed_lambda
+    
+    def get_constraint(self):
+        return self.instantiate_constraint()
 
 class ConstraintBase():
     """
@@ -181,6 +192,9 @@ class ValueInConcreteState():
     def __repr__(self):
         return f"{self._concrete_state_expression}({self._program_variable_name})"
     
+    def get_concrete_state_expression(self):
+        return self._concrete_state_expression
+    
     def __lt__(self, other):
         if type(other) in [int, str, float]:
             return ValueInConcreteStateLessThanConstant(self, other)
@@ -209,6 +223,9 @@ class ValueInConcreteStateEqualsConstant(ConstraintBase):
     
     def __repr__(self):
         return f"{self._value_expression}.equals({self._constant})"
+    
+    def get_value_expression(self):
+        return self._value_expression
 
 class ValueInConcreteStateLessThanConstant(ConstraintBase):
     """
@@ -222,6 +239,9 @@ class ValueInConcreteStateLessThanConstant(ConstraintBase):
     
     def __repr__(self):
         return f"{self._value_expression} < {self._constant}"
+    
+    def get_value_expression(self):
+        return self._value_expression
 
 class ValueInConcreteStateGreaterThanConstant(ConstraintBase):
     """
@@ -235,6 +255,9 @@ class ValueInConcreteStateGreaterThanConstant(ConstraintBase):
     
     def __repr__(self):
         return f"{self._value_expression} > {self._constant}"
+    
+    def get_value_expression(self):
+        return self._value_expression
 
 """
 Attributes of transitions.
@@ -250,6 +273,9 @@ class DurationOfTransition():
     
     def __repr__(self):
         return f"{self._transition_expression}.duration()"
+    
+    def get_transition_expression(self):
+        return self._transition_expression
     
     def __lt__(self, other):
         if type(other) in [int, float]:
@@ -267,6 +293,9 @@ class ConcreteStateBeforeTransition(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.before()"
+    
+    def get_transition_expression(self):
+        return self._transition_expression
 
 class ConcreteStateAfterTransition(ConcreteStateExpression):
     """
@@ -278,6 +307,9 @@ class ConcreteStateAfterTransition(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.after()"
+    
+    def get_transition_expression(self):
+        return self._transition_expression
 
 """
 Atomic constraints over transitions.
@@ -294,6 +326,9 @@ class DurationOfTransitionLessThanConstant(ConstraintBase):
     
     def __repr__(self):
         return f"{self._transition_duration} < {self._constant}"
+    
+    def get_transition_duration_obj(self):
+        return self._transition_duration
 
 class DurationOfTransitionGreaterThanConstant(ConstraintBase):
     """
@@ -306,6 +341,9 @@ class DurationOfTransitionGreaterThanConstant(ConstraintBase):
     
     def __repr__(self):
         return f"{self._transition_duration} > {self._constant}"
+    
+    def get_transition_duration_obj(self):
+        return self._transition_duration
 
 """
 Temporal operators.
@@ -323,6 +361,12 @@ class NextTransitionFromConcreteState(TransitionExpression):
     
     def __repr__(self):
         return f"{self._concrete_state_expression}.next({self._predicate})"
+    
+    def get_concrete_state_expression(self):
+        return self._concrete_state_expression
+    
+    def get_predicate(self):
+        return self._predicate
 
 
 class NextConcreteStateFromConcreteState(ConcreteStateExpression):
@@ -337,6 +381,12 @@ class NextConcreteStateFromConcreteState(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._concrete_state_expression}.next({self._predicate})"
+    
+    def get_concrete_state_expression(self):
+        return self._concrete_state_expression
+    
+    def get_predicate(self):
+        return self._predicate
 
 class NextTransitionFromTransition(TransitionExpression):
     """
@@ -350,6 +400,12 @@ class NextTransitionFromTransition(TransitionExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.next({self._predicate})"
+    
+    def get_transition_expression(self):
+        return self._transition_expression
+    
+    def get_predicate(self):
+        return self._predicate
 
 
 class NextConcreteStateFromTransition(ConcreteStateExpression):
@@ -364,6 +420,12 @@ class NextConcreteStateFromTransition(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.next({self._predicate})"
+    
+    def get_transition_expression(self):
+        return self._transition_expression
+    
+    def get_predicate(self):
+        return self._predicate
 
 """
 Measurement operators.
@@ -387,6 +449,12 @@ class TimeBetween():
     def __lt__(self, other):
         if type(other) in [int, float]:
             return TimeBetweenLessThanConstant(self, other)
+    
+    def get_lhs_concrete_state_expression(self):
+        return self._concrete_state_expression_1
+    
+    def get_rhs_concrete_state_expression(self):
+        return self._concrete_state_expression_2
 
 class TimeBetweenLessThanConstant(ConstraintBase):
     """
@@ -399,3 +467,6 @@ class TimeBetweenLessThanConstant(ConstraintBase):
     
     def __repr__(self):
         return f"{self._time_between_expression} < {self._constant}"
+    
+    def get_time_between_expression(self):
+        return self._time_between_expression

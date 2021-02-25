@@ -24,6 +24,7 @@ specification1 = Specification()\
     )
 
 print(specification1)
+print(specification1.get_function_names_used())
 
 specification2 = Specification()\
     .forall(c = calls("func").during("func1"))\
@@ -38,6 +39,7 @@ specification2 = Specification()\
     )
 
 print(specification2)
+print(specification2.get_function_names_used())
 
 specification3 = Specification()\
     .forall(q = changes('a').during('func1'))\
@@ -49,6 +51,7 @@ specification3 = Specification()\
     )
 
 print(specification3)
+print(specification3.get_function_names_used())
 
 # end logging
 logger.log.close()

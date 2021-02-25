@@ -47,3 +47,6 @@ class future(predicate):
     
     def __repr__(self):
         return f"future({self._predicate})"
+    
+    def get_predicate(self):
+        return self._predicate
