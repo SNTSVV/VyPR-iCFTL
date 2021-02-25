@@ -155,7 +155,28 @@ class Specification():
                 stack.append(top.get_time_between_expression().get_rhs_concrete_state_expression())
             
         return all_function_names
-
+    
+    def get_constraint(self):
+        """
+        Traverse the specification until a constraint is reached.
+        """
+        # set the current object to be the first quantifier
+        current_obj = self._quantifier
+        # iterate through the structure, using the type Constraint as a place to stop
+        while type(current_obj) is not Constraint:
+            # traverse depending on the type of the current object
+            if type(current_obj) is Specification:
+                current_obj = current_obj.get_quantifier()
+            elif type(current_obj) is Forall:
+                # in the case of a quantifier, the two possibilities are
+                # that the next item to consider is a quantifier or a constraint
+                if current_obj.get_quantifier():
+                    current_obj = current_obj.get_quantifier()
+                else:
+                    # if we arrive at a constraint, the loop
+                    # will stop at the next ieration
+                    current_obj = current_obj.get_constraint()
+        return current_obj
 
     def forall(self, **quantified_variable):
         """

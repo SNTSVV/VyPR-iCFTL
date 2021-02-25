@@ -11,6 +11,24 @@ q(x) < 10 is a constraint and is represented using the classes in this module.
 from VyPR.Specifications.predicates import changes, calls
 import VyPR.Logging.logger as logger
 
+def is_atomic_constraint(obj):
+    """
+    Decide whether obj has ConstraintBase as a base class.
+    """
+    return ConstraintBase in type(obj).__bases__
+
+def is_connective(obj):
+    """
+    Decide whether obj is a logical connective (and, or, not).
+    """
+    return type(obj) in [Conjunction, Disjunction, Negation]
+
+def is_complete(obj):
+    """
+    Decide whether obj is complete, or needs to be completed by further method calls.
+    """
+    return is_connective(obj) or is_atomic_constraint(obj)
+
 class Constraint():
     """
     Class for representing the recursive structure of the quantifier-free part of iCFTL specifications.
@@ -40,6 +58,34 @@ class Constraint():
     
     def get_constraint(self):
         return self.instantiate_constraint()
+    
+    def get_atomic_constraints(self):
+        """
+        Traverse the specification in order to get a list of the atomic constraints used.
+        """
+        # initialise an empty list of all atomic constraints
+        all_atomic_constraints = []
+        # initialise stack wth top-level Specification object for traversal
+        stack = [self]
+        # process the stack while it is not empty
+        while len(stack) > 0:
+            # get the top element from the stack
+            top = stack.pop()
+            # based on the type, add child elements to the stack
+            if type(top) is Constraint:
+                stack.append(top.get_constraint())
+            elif type(top) is Conjunction:
+                stack += top.get_conjuncts()
+            elif type(top) is Disjunction:
+                stack += top.get_disjuncts()
+            elif type(top) is Negation:
+                stack.append(top.get_operand())
+            elif type(top) in [ValueInConcreteStateEqualsConstant, ValueInConcreteStateLessThanConstant, ValueInConcreteStateGreaterThanConstant,
+                                DurationOfTransitionLessThanConstant, DurationOfTransitionGreaterThanConstant,
+                                TimeBetweenLessThanConstant]:
+                all_atomic_constraints.append(top)
+            
+        return all_atomic_constraints
 
 class ConstraintBase():
     """
@@ -58,6 +104,10 @@ class Conjunction(ConstraintBase):
     """
 
     def __init__(self, *conjuncts):
+        # check that each conjunct is complete
+        for conjunct in conjuncts:
+            if not is_complete(conjunct):
+                raise Exception(f"Conjunct {conjunct} is not complete")
         self._conjuncts = conjuncts
     
     def __repr__(self):
@@ -73,6 +123,10 @@ class Disjunction(ConstraintBase):
     """
 
     def __init__(self, *disjuncts):
+        # check that each disjunct is complete
+        for disjunct in disjuncts:
+            if not is_complete(disjunct):
+                raise Exception(f"Disjunct {disjunct} is not complete")
         self._disjuncts = disjuncts
     
     def __repr__(self):
@@ -90,6 +144,9 @@ class Negation(ConstraintBase):
     """
 
     def __init__(self, operand):
+        # check that operand is complete
+        if not is_complete(operand):
+            raise Exception(f"Operand {operand} for negation is not complete")
         self._operand = operand
     
     def __repr__(self):

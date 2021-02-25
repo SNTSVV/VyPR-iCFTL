@@ -17,7 +17,7 @@ specification1 = Specification()\
                 all_are_true(
                     q('a') < 10,
                     q('a') > 5,
-                    q.next(calls('f').during('func2'))
+                    q.next(calls('f').during('func2')).duration() < 5
                 )
             )
         )
@@ -25,6 +25,8 @@ specification1 = Specification()\
 
 print(specification1)
 print(specification1.get_function_names_used())
+print(specification1.get_constraint())
+print(specification1.get_constraint().get_atomic_constraints())
 
 specification2 = Specification()\
     .forall(c = calls("func").during("func1"))\
@@ -40,6 +42,8 @@ specification2 = Specification()\
 
 print(specification2)
 print(specification2.get_function_names_used())
+print(specification2.get_constraint())
+print(specification2.get_constraint().get_atomic_constraints())
 
 specification3 = Specification()\
     .forall(q = changes('a').during('func1'))\
@@ -52,6 +56,8 @@ specification3 = Specification()\
 
 print(specification3)
 print(specification3.get_function_names_used())
+print(specification3.get_constraint())
+print(specification3.get_constraint().get_atomic_constraints())
 
 # end logging
 logger.log.close()
