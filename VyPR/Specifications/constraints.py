@@ -11,13 +11,13 @@ q(x) < 10 is a constraint and is represented using the classes in this module.
 from VyPR.Specifications.predicates import changes, calls
 import VyPR.Logging.logger as logger
 
-def is_atomic_constraint(obj):
+def _is_atomic_constraint(obj):
     """
     Decide whether obj has ConstraintBase as a base class.
     """
     return ConstraintBase in type(obj).__bases__
 
-def is_connective(obj):
+def _is_connective(obj):
     """
     Decide whether obj is a logical connective (and, or, not).
     """
@@ -27,7 +27,19 @@ def is_complete(obj):
     """
     Decide whether obj is complete, or needs to be completed by further method calls.
     """
-    return is_connective(obj) or is_atomic_constraint(obj)
+    return _is_connective(obj) or _is_atomic_constraint(obj)
+
+def is_normal_atom(obj):
+    """
+    Decide whether an atomic constraint is normal (it requires only one measurement).
+    """
+    return NormalAtom in type(obj).__base__
+
+def is_mixed_atom(obj):
+    """
+    Decide whether an atomic constraint is mixed (it requires multiple measurements).
+    """
+    return MixedAtom in type(obj).__base__
 
 class Constraint():
     """
@@ -90,6 +102,20 @@ class Constraint():
 class ConstraintBase():
     """
     Class for representing the root of a combination of constraints.
+    """
+
+    pass
+
+class NormalAtom():
+    """
+    Class representing an atomic constraint for which a single measurement must be taken.
+    """
+
+    pass
+
+class MixedAtom():
+    """
+    Class representing an atomic constraint for which multiple measurements must be taken.
     """
 
     pass
@@ -268,7 +294,7 @@ class ValueInConcreteState():
 Atomic constraints for concrete states.
 """
 
-class ValueInConcreteStateEqualsConstant(ConstraintBase):
+class ValueInConcreteStateEqualsConstant(ConstraintBase, NormalAtom):
     """
     Class to represent the atomic constraint q(x) == n for a concrete state variable q, a program variable x
     and a constant n.
@@ -284,7 +310,7 @@ class ValueInConcreteStateEqualsConstant(ConstraintBase):
     def get_value_expression(self):
         return self._value_expression
 
-class ValueInConcreteStateLessThanConstant(ConstraintBase):
+class ValueInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):
     """
     Class to represent the atomic constraint q(x) < n for a concrete state variable q, a program variable x
     and a constant n.
@@ -300,7 +326,7 @@ class ValueInConcreteStateLessThanConstant(ConstraintBase):
     def get_value_expression(self):
         return self._value_expression
 
-class ValueInConcreteStateGreaterThanConstant(ConstraintBase):
+class ValueInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
     """
     Class to represent the atomic constraint q(x) > n for a concrete state variable q, a program variable x
     and a constant n.
@@ -372,7 +398,7 @@ class ConcreteStateAfterTransition(ConcreteStateExpression):
 Atomic constraints over transitions.
 """
 
-class DurationOfTransitionLessThanConstant(ConstraintBase):
+class DurationOfTransitionLessThanConstant(ConstraintBase, NormalAtom):
     """
     Class to represent the comparison of a transition duration with a constant.
     """
@@ -387,7 +413,7 @@ class DurationOfTransitionLessThanConstant(ConstraintBase):
     def get_transition_duration_obj(self):
         return self._transition_duration
 
-class DurationOfTransitionGreaterThanConstant(ConstraintBase):
+class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
     """
     Class to represent the comparison of a transition duration with a constant.
     """
@@ -513,7 +539,7 @@ class TimeBetween():
     def get_rhs_concrete_state_expression(self):
         return self._concrete_state_expression_2
 
-class TimeBetweenLessThanConstant(ConstraintBase):
+class TimeBetweenLessThanConstant(ConstraintBase, NormalAtom):
     """
     Class to represent the atomic constraint timeBetween(q, q') < n for some numerical constant n.
     """
