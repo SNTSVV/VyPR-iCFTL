@@ -10,16 +10,22 @@ class changes(predicate):
     Class for representing the syntax changes(x).during(func)
     """
 
-    def __init__(self, variable):
-        self._variable = variable
+    def __init__(self, program_variable):
+        self._program_variable = program_variable
         self._during_function = None
     
     def __repr__(self):
-        return f"changes({self._variable}).during({self._during_function})"
+        return f"changes({self._program_variable}).during({self._during_function})"
     
     def during(self, function_name):
         self._during_function = function_name
         return self
+    
+    def get_program_variable(self):
+        return self._program_variable
+    
+    def get_during_function(self):
+        return self._during_function
 
 class calls(predicate):
     """
@@ -36,6 +42,12 @@ class calls(predicate):
     def during(self, function_name):
         self._during_function = function_name
         return self
+    
+    def get_function_name(self):
+        return self._function_name
+    
+    def get_during_function(self):
+        return self._during_function
 
 class future(predicate):
     """

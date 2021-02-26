@@ -6,6 +6,7 @@ import ast
 import datetime
 import graphviz
 
+from VyPR.Specifications.predicates import changes, calls
 import VyPR.Logging.logger as logger
 
 class SymbolicState():
@@ -18,7 +19,7 @@ class SymbolicState():
         self._parents: list = []
     
     def __repr__(self):
-        return f"<SymbolicState (id {id(self)})>"
+        return f"<{type(self).__name__} (id {id(self)})>"
     
     def add_child(self, child_symbolic_state):
         """
@@ -59,6 +60,9 @@ class StatementSymbolicState(SymbolicState):
         super().__init__()
         self._symbols_changed = symbols_changed
         self._ast_obj = ast_obj
+    
+    def __repr__(self):
+        return f"<SymbolicState (id {id(self)}, changes {self._symbols_changed})>"
     
     def get_symbols_changed(self) -> list:
         return self._symbols_changed
@@ -132,6 +136,81 @@ class SCFG():
         self._symbolic_states: list = [self._root]
         # begin processing
         self.subprogram_to_scfg(self._program_asts, self._root)
+    
+    def get_symbolic_states(self):
+        return self._symbolic_states
+    
+    def get_symbolic_states_from_symbol(self, symbol: str) -> list:
+        """
+        Given a predicate, determine the list of symbolic states in this SCFG that indicate a change of symbol
+        """
+        # filter the symbolic states to include only those that change symbol
+        relevant_symbolic_states = \
+            list(filter(
+                lambda symbolic_state : hasattr(symbolic_state, "get_symbols_changed") and symbol in symbolic_state.get_symbols_changed(),
+                self._symbolic_states
+            ))
+        return list(relevant_symbolic_states)
+    
+    def get_reachable_symbolic_states_from_symbol(self, symbol: str, symbolic_state) -> list:
+        """
+        Given a symbol and a symbolic state, determine the list of symbolic states in this SCFG
+        that indicate a change of symbol, and that are reachable from symbolic_state.
+        """
+        # get all symbolic states from symbol and then filter on reachability
+        relevant_symbolic_states = self.get_symbolic_states_from_symbol(symbol)
+        # filter based on reachability
+        relevant_symbolic_states = list(
+            filter(
+                lambda target_symbolic_state : self.is_reachable_from(target_symbolic_state, symbolic_state),
+                relevant_symbolic_states
+            )
+        )
+        return relevant_symbolic_states
+    
+    def is_reachable_from(self, target_symbolic_state, source_symbolic_state) -> bool:
+        """
+        Given target and source symbolic states, determine whether target
+        is reachable from source.
+        """
+        # determine all symbolic states reachable from source_symbolic_state
+        all_reachable_symbolic_states = self._get_reachable_symbolic_states(source_symbolic_state)
+        # check to see if target_symbolic_state is in the list
+        return target_symbolic_state in all_reachable_symbolic_states
+
+    
+    def _get_reachable_symbolic_states(self, source_symbolic_state) -> list:
+        """
+        Determine all symbolic states reachable from the source.
+        """
+        # initialise a stack
+        stack = [source_symbolic_state]
+        # initialise the list of visited symbolic states
+        visited = [source_symbolic_state]
+        # initialise the list of symbolic states reachable from source
+        reachable = []
+        # iterate while the stack is non-empty
+        while len(stack) > 0:
+            # get the top of the stack
+            top = stack.pop()
+            # get all children
+            children = top.get_children()
+            # add all unvisited children to the stack
+            unvisited_children = list(
+                filter(
+                    lambda child: child not in visited,
+                    children
+                )
+            )
+            # add to stack
+            stack += unvisited_children
+            # add to reachable
+            reachable += unvisited_children
+            # add to visited
+            visited += unvisited_children
+        
+        return reachable
+
     
     def subprogram_to_scfg(self, subprogram: list, parent_symbolic_state: SymbolicState):
         """

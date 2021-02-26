@@ -237,6 +237,9 @@ class Forall():
     
     def get_predicate(self):
         return self._predicate
+    
+    def get_variable(self):
+        return self._variable
 
     def forall(self, **quantified_variable):
         """
