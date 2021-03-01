@@ -3,10 +3,11 @@ Module containing SCFG factories.
 """
 
 import ast
+import os
 
 from VyPR.SCFG.builder import SCFG
 
-def construct_scfg_of_function(function_name: str) -> SCFG:
+def construct_scfg_of_function(root_directory: str, function_name: str) -> SCFG:
     """
     Given a fully-qualified function name, find the relevant ast in a source file and construct the SCFG.
 
@@ -37,6 +38,7 @@ def construct_scfg_of_function(function_name: str) -> SCFG:
 
     # determine the module file name
     module_filename = f"{'/'.join(tokens)}.py"
+    module_filename = os.path.join(root_directory, module_filename)
 
     # determine the function path (by taking the rest of the module name)
     function_path = function_name[len(module_name)+1:]
@@ -81,4 +83,4 @@ def construct_scfg_of_function(function_name: str) -> SCFG:
     # construct the SCFG
     scfg = SCFG(function_ast.body)
 
-    return scfg
+    return function_ast.body, scfg

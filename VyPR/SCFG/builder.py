@@ -69,6 +69,9 @@ class StatementSymbolicState(SymbolicState):
     
     def get_symbols_changed(self) -> list:
         return self._symbols_changed
+    
+    def get_ast_object(self):
+        return self._ast_obj
 
 class ControlFlowSymbolicState(SymbolicState):
     """
@@ -270,7 +273,7 @@ class SCFG():
                     ast.Expr: self._process_expression_ast
                 }
                 # instantiate the symbolic state
-                new_symbolic_state: SymbolicState = ast_type_to_function[type(subprogram_ast)](subprogram_ast)
+                new_symbolic_state: SymbolicState = ast_type_to_function[type(subprogram_ast)](subprogram_ast, subprogram)
                 # add it to the list of vertices
                 self._symbolic_states.append(new_symbolic_state)
                 logger.log.info(f"Instantiated symbolic state {new_symbolic_state} and added to list of symbolic states for SCFG.")
@@ -412,13 +415,15 @@ class SCFG():
         graph.render(filename)
         logger.log.info(f"SCFG written to file {filename}")
     
-    def _process_assignment_ast(self, stmt_ast: ast.Assign):
+    def _process_assignment_ast(self, stmt_ast: ast.Assign, stmt_ast_parent_block):
         """
         Instantiate a new SymbolicState instance based on this assignment statement.
 
         The target program variables, along with any functions called on the right-hand-side
         of the assignment, will be included as symbols changed by that Symbolic State
         """
+        # first, add a reference from stmt_ast to its parent block
+        stmt_ast.parent_block = stmt_ast_parent_block
         logger.log.info(f"Instantiating symbolic state for AST instance {stmt_ast}")
         # determine the program variables assigned on the left-hand-side
         targets: list = stmt_ast.targets
@@ -439,12 +444,14 @@ class SCFG():
         symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     
-    def _process_expression_ast(self, stmt_ast: ast.Expr):
+    def _process_expression_ast(self, stmt_ast: ast.Expr, stmt_ast_parent_block):
         """
         Instantiate a new SymbolicState instance based on this expression statement.
 
         TODO: handle more complex ast structures for forming names, for example obj.subobj.var.
         """
+        # first, add a reference from stmt_ast to its parent block
+        stmt_ast.parent_block = stmt_ast_parent_block
         logger.log.info(f"Instantiating a symbolic state for AST instance {stmt_ast}")
         # initialise empty list of symbols
         all_symbols: list = []

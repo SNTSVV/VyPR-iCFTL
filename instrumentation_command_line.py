@@ -11,8 +11,9 @@ from VyPR.Specifications.builder import Specification, all_are_true, one_is_true
 from VyPR.Specifications.predicates import changes, calls, future
 from VyPR.SCFG.module_processor import ModuleProcessor
 from VyPR.SCFG.prepare import construct_scfg_of_function
-from VyPR.Instrumentation.instrument import Analyser
+from VyPR.Instrumentation.analyse import Analyser
 from VyPR.Instrumentation.prepare import prepare_specification
+from VyPR.Instrumentation.instrument import Instrument
 
 # initialise logging
 import VyPR.Logging.logger as logger
@@ -26,13 +27,11 @@ parser.add_argument("--spec-file", type=str, required=True, help="The file conta
 # parse the arguments
 args = parser.parse_args()
 
-# initialise Analyser object
-analyser = Analyser(args.spec_file, args.root_dir)
+# initialise Instrument object
+instrument_instance = Instrument(args.spec_file, args.root_dir)
 
-# compute instrumentation points
-symbolic_states = analyser.compute_instrumentation_points()
-
-pprint.pprint(symbolic_states)
+# insert instruments
+instrument_instance.insert_instruments()
 
 # close logging
 logger.log.close()
