@@ -4,6 +4,19 @@ based on a predicate found in an iCFTL specification.
 """
 
 from VyPR.Specifications.predicates import changes, calls, future
+from VyPR.Specifications.constraints import (ValueInConcreteStateEqualsConstant,
+                                            ValueInConcreteStateLessThanConstant,
+                                            ValueInConcreteStateGreaterThanConstant,
+                                            DurationOfTransitionLessThanConstant,
+                                            DurationOfTransitionGreaterThanConstant,
+                                            TimeBetweenLessThanConstant,
+                                            NextTransitionFromConcreteState,
+                                            NextConcreteStateFromConcreteState,
+                                            NextTransitionFromTransition,
+                                            NextConcreteStateFromTransition,
+                                            ConcreteStateAfterTransition,
+                                            ConcreteStateBeforeTransition,
+                                            derive_sequence_of_temporal_operators)
 import VyPR.Logging.logger as logger
 
 class SCFGSearcher():
@@ -48,7 +61,7 @@ class SCFGSearcher():
             inner_predicate = predicate.get_predicate()
             logger.log.info(f"Inner predicate used by future is {inner_predicate}")
             # get the program symbol
-            if type(predicate) is changes:
+            if type(inner_predicate) is changes:
                 program_variable = inner_predicate.get_program_variable()
             else:
                 program_variable = inner_predicate.get_function_name()
@@ -82,6 +95,67 @@ class SCFGSearcher():
         
         return relevant_symbolic_states
     
+    def get_symbolic_states_from_temporal_operator(self, temporal_operator, base_symbolic_state) -> list:
+        """
+        Given a temporal operator object and a base symbolic state, either traverse
+        forwards in the current symbolic control-flow graph, or search in others to determine the list of
+        relevant symbolic states.
+        """
+        # check the type of the temporal operator
+        if type(temporal_operator) in [NextConcreteStateFromConcreteState,
+                                        NextTransitionFromConcreteState,
+                                        NextConcreteStateFromTransition,
+                                        NextTransitionFromTransition]:
+            # we have a Next... operator, so we have two options:
+            # 1) if the function in the predicate matches the function containing base_symbolic_state,
+            #    we search forwards in that function's SCFG for appropriate symbolic states, or
+            # 2) if the function in the predicate differs from the function containign base_symbolic_state,
+            #    we search everywhere in the other function's SCFG (no reachability constraints).
+
+            # get the function name of base_symbolic_state
+            base_function_name = self.get_function_name_of_symbolic_state(base_symbolic_state)
+            # get the function name from the predicate in temporal_operator
+            temporal_operator_function_name = temporal_operator.get_predicate().get_during_function()
+            # get the program variable from the temporal operator's predicate
+            temporal_operator_predicate = temporal_operator.get_predicate()
+            if type(temporal_operator_predicate) is changes:
+                program_variable = temporal_operator_predicate.get_program_variable()
+            else:
+                program_variable = temporal_operator_predicate.get_function_name()
+            # check for equality
+            if base_function_name == temporal_operator_function_name:
+                # get the relevant SCFG
+                relevant_scfg = self._function_name_to_scfg_map[base_function_name]
+                # the functions are equal, so we traverse forwards in the relevant SCFG
+                relevant_symbolic_states = \
+                    relevant_scfg.get_reachable_symbolic_states_from_symbol(
+                        program_variable,
+                        base_symbolic_state
+                    )
+            else:
+                # the functions are not equal, so we get relevant symbolic states without looking
+                # at reachability
+                # get the relevant SCFG
+                relevant_scfg = self._function_name_to_scfg_map[temporal_operator_function_name]
+                # get rlevant symbolic states
+                relevant_symbolic_states = relevant_scfg.get_symbolic_states_from_symbol(program_variable)
+        
+        elif type(temporal_operator) is ConcreteStateAfterTransition:
+            # since we represent edges with the symbolic states immediately after them,
+            # here we can just return base_symbolic_state
+            relevant_symbolic_states = [base_symbolic_state]
+
+        elif type(temporal_operator) is ConcreteStateBeforeTransition:
+            # since we represent edges with the symbolic states immediately after them,
+            # to get the symbolic state immediately before the edge that connects to base_symbolic_state,
+            # we can just refer to the parent of base_symbolic_state
+            # Note: for symbolic states captured by quantifiers (ie, that perform actions on program variables),
+            # there can only be one parent so base_symbolic_state.get_parents() will give a list with only
+            # one element
+            relevant_symbolic_states = base_symbolic_state.get_parents()
+        
+        return relevant_symbolic_states
+    
     def get_function_name_of_symbolic_state(self, symbolic_state) -> str:
         """
         Given a symbolic state, search through self._function_name_to_scfg_map
@@ -98,3 +172,53 @@ class SCFGSearcher():
             if symbolic_state in symbolic_states:
                 logger.log.info(f"Found symbolic state in function '{function_name}'")
                 return function_name
+    
+    def get_instrumentation_points_for_atomic_constraint(self, atomic_constraint, variable_symbolic_state_map: dict) -> dict:
+        """
+        Given an atomic constraint and a map from variables to symbolic states,
+        determine the map from sub-atom indices to lists of symbolic states that are relevant to that part of the constraint.
+        """
+        # initialise the empty map
+        subatom_index_to_symbolic_states = {}
+        # get the map of sequences of temporal operators for the atomic constraint given
+        temporal_operator_sequence_map = derive_sequence_of_temporal_operators(atomic_constraint)
+        # for each sequence of temporal operators (1 for normal atoms, 2 for mixed atoms),
+        # determine the appropriate list of symbolic states
+        for subatom_index in temporal_operator_sequence_map:
+            # initialise subatom_index_to_symbolic_states for this subatom index
+            subatom_index_to_symbolic_states[subatom_index] = []
+            # get the sequence of temporal operators and base variable for this subatom index
+            base_variable = temporal_operator_sequence_map[subatom_index][-1]
+            temporal_operator_sequence = temporal_operator_sequence_map[subatom_index][:-1]
+            # based on this sequence, determine the list of symbolic states (by determining the symbolic states identified by each
+            # temporal operator in the sequence)
+            # to do this, iterate through the temporal operators in the sequence, each time replacing the current list
+            # of symbolic states
+
+            # initialise empty list of symbolic state
+            # using base_variable to get the relevant symbolic state from variable_symbolic_state_map
+            current_symbolic_states = [variable_symbolic_state_map[base_variable.get_name()]]
+            # iterate through the list of temporal operators
+            for temporal_operator in temporal_operator_sequence:
+                # for each symbolic state in current_symbolic_states, determine the relevant next
+                # symbolic state based on temporal_operator
+
+                # initialise empty list of symbolic states from the next stage of traversal
+                new_symbolic_states = []
+                # iterate through current_symbolic_states
+                for current_symbolic_state in current_symbolic_states:
+                    # get the list of next ones based on temporal_operator
+                    next_symbolic_states = self.get_symbolic_states_from_temporal_operator(
+                        temporal_operator,
+                        current_symbolic_state
+                    )
+                    # add to new_symbolic_states
+                    new_symbolic_states += next_symbolic_states
+                
+                # overwrite current_symbolic_states
+                current_symbolic_states = new_symbolic_states
+            
+            # add current_symbolic_states to the subatom index map
+            subatom_index_to_symbolic_states[subatom_index] = current_symbolic_states
+
+        return subatom_index_to_symbolic_states

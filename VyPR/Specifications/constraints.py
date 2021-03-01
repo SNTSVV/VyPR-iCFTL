@@ -33,13 +33,95 @@ def is_normal_atom(obj):
     """
     Decide whether an atomic constraint is normal (it requires only one measurement).
     """
-    return NormalAtom in type(obj).__base__
+    return NormalAtom in type(obj).__bases__
 
 def is_mixed_atom(obj):
     """
     Decide whether an atomic constraint is mixed (it requires multiple measurements).
     """
-    return MixedAtom in type(obj).__base__
+    return MixedAtom in type(obj).__bases__
+
+def derive_sequence_of_temporal_operators(obj) -> dict:
+    """
+    Traverse the structure of the given atomic constraint in order to determine the sequence
+    of temporal operators used.
+    """
+    # initialise map from subatom index to sequence of temporal operators
+    # check whether the atomic constraint given is normal or mixed
+    if is_normal_atom(obj):
+        # normal atomic constraint case
+        return {
+            0: _derive_sequence_of_temporal_operators(obj)
+        }
+    else:
+        # mixed atomic constraint case
+        return {
+            0: _derive_sequence_of_temporal_operators(obj.get_lhs_expression()),
+            1: _derive_sequence_of_temporal_operators(obj.get_rhs_expression())
+        }
+
+def _derive_sequence_of_temporal_operators(obj) -> list:
+    """
+    Traverse the structure of the given atomic constraint.  This function is called by
+    derive_sequence_of_temporal_operators in order to generate either 1 or 2 sequences
+    of temporal operators (1 for normal case, 2 for mixed case).
+    """
+    # initialise empty sequence of temporal operators
+    temporal_operator_sequence = []
+    # initialise the current object to be used during the traversal
+    current_obj = obj
+    # traverse the structure of current_obj until we reach a variable
+    while type(current_obj) not in [ConcreteStateVariable, TransitionVariable]:
+        # check the type of current_obj
+        # we only add to the temporal operator sequence in certain cases,
+        # for example when a Next... class is found
+        if type(current_obj) in [ValueInConcreteStateEqualsConstant,
+                                ValueInConcreteStateLessThanConstant,
+                                ValueInConcreteStateGreaterThanConstant]:
+            current_obj = current_obj.get_value_expression()
+
+        elif type(current_obj) in [DurationOfTransitionLessThanConstant,
+                                    DurationOfTransitionGreaterThanConstant]:
+            current_obj = current_obj.get_transition_duration_obj()
+        
+        elif type(current_obj) is ValueInConcreteState:
+            current_obj = current_obj.get_concrete_state_expression()
+        
+        elif type(current_obj) is DurationOfTransition:
+            current_obj = current_obj.get_transition_expression()
+        
+        elif type(current_obj) in [ConcreteStateBeforeTransition, ConcreteStateAfterTransition]:
+            current_obj = current_obj.get_transition_expression()
+        
+        elif type(current_obj) is NextTransitionFromConcreteState:
+            temporal_operator_sequence.append(current_obj)
+            current_obj = current_obj.get_concrete_state_expression()
+        
+        elif type(current_obj) is NextConcreteStateFromConcreteState:
+            temporal_operator_sequence.append(current_obj)
+            current_obj = current_obj.get_concrete_state_expression()
+        
+        elif type(current_obj) is NextTransitionFromTransition:
+            temporal_operator_sequence.append(current_obj)
+            current_obj = current_obj.get_transition_expression()
+        
+        elif type(current_obj) is NextConcreteStateFromTransition:
+            temporal_operator_sequence.append(current_obj)
+            current_obj = current_obj.get_transition_expression()
+    
+    # add the variable to the end of the sequence
+    temporal_operator_sequence.append(current_obj)
+    
+    return temporal_operator_sequence
+
+def get_base_variable(self, obj) -> list:
+    """
+    Get the temporal operator sequence of obj and return the last element (the base variable)
+
+    Note: we assume that the object given does not have multiple base variables, hence
+    in the case of a mixed atom, the object given should be a part of the atomic constraint.
+    """
+    return _derive_sequence_of_temporal_operators(obj)[-1]
 
 class Constraint():
     """
@@ -247,6 +329,9 @@ class ConcreteStateVariable(ConcreteStateExpression):
     
     def __repr__(self):
         return self._name
+    
+    def get_name(self) -> str:
+        return self._name
 
 class TransitionVariable(TransitionExpression):
     """
@@ -257,6 +342,9 @@ class TransitionVariable(TransitionExpression):
         self._name = name
     
     def __repr__(self):
+        return self._name
+    
+    def get_name(self) -> str:
         return self._name
 
 """
@@ -533,10 +621,10 @@ class TimeBetween():
         if type(other) in [int, float]:
             return TimeBetweenLessThanConstant(self, other)
     
-    def get_lhs_concrete_state_expression(self):
+    def get_lhs_expression(self):
         return self._concrete_state_expression_1
     
-    def get_rhs_concrete_state_expression(self):
+    def get_rhs_expression(self):
         return self._concrete_state_expression_2
 
 class TimeBetweenLessThanConstant(ConstraintBase, NormalAtom):

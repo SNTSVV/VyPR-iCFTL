@@ -21,8 +21,10 @@ Based on these maps, the constraint part of the specification is then inspected
 to determine the additional symbolic states/pairs of symbolic states that are needed.
 """
 
+import pprint
+
 from VyPR.Specifications.builder import Specification, Forall
-from VyPR.Specifications.constraints import Constraint, ConcreteStateVariable, TransitionVariable
+from VyPR.Specifications.constraints import Constraint
 from VyPR.Instrumentation.prepare import prepare_specification
 from VyPR.SCFG.prepare import construct_scfg_of_function
 from VyPR.SCFG.search import SCFGSearcher
@@ -76,7 +78,6 @@ class Analyser():
         # based on these maps, compute a map (binding index, atom index, subatom index) -> list of symbolic states
         # of intrumentation points
         instrumentation_point_map = self.inspect_constraints()
-
     
     def inspect_quantifiers(self) -> list:
         """
@@ -180,9 +181,36 @@ class Analyser():
         
         return lists_to_return
     
-    def inspect_constraints(self):
+    def inspect_constraints(self) -> dict:
         """
         For each map in self._variable_to_symbolic_state_maps, use the constraint part of the
         specification to determine the points from which data must be taken.
+
+        To do this, iterate through the maps in self._variable_to_symbolic_state_maps and, for each one,
+        iterate through the atomic constraints and use each one to find a list of symbolic states.
+
+        The end result should be a map:
+        
+        (index of (variable -> symbolic state) map) -> (index of atomic constraint)
+            -> (index of sub-atomic constraint) -> list of instrumentation points
         """
-        return {}
+        # initialise empty map for final lists of instrumentation points
+        instrumentation_point_tree = {}
+        # get the constraint part of the specification
+        constraint = self._specification.get_constraint()
+        # get the atomic constraints
+        atomic_constraints = constraint.get_atomic_constraints()
+        # iterate through the maps
+        for (map_index, variable_to_symbolic_state_map) in enumerate(self._variable_to_symbolic_state_maps):
+            # initialise map for this map index
+            instrumentation_point_tree[map_index] = {}
+            # iterate through the atomic constraints
+            for (atomic_constraint_index, atomic_constraint) in enumerate(atomic_constraints):
+                # construct this entry of the map
+                instrumentation_point_tree[map_index][atomic_constraint_index] = \
+                    self._scfg_searcher.get_instrumentation_points_for_atomic_constraint(
+                        atomic_constraint,
+                        variable_to_symbolic_state_map
+                    )
+
+        return instrumentation_point_tree

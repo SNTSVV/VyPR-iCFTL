@@ -151,8 +151,8 @@ class Specification():
                 stack.append(top.get_predicate())
             elif type(top) is TimeBetweenLessThanConstant:
                 # traverse both arguments to the timeBetween operator
-                stack.append(top.get_time_between_expression().get_lhs_concrete_state_expression())
-                stack.append(top.get_time_between_expression().get_rhs_concrete_state_expression())
+                stack.append(top.get_time_between_expression().get_lhs_expression())
+                stack.append(top.get_time_between_expression().get_rhs_expression())
             
         return all_function_names
     
