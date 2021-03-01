@@ -21,6 +21,9 @@ class SymbolicState():
     def __repr__(self):
         return f"<{type(self).__name__} (id {id(self)})>"
     
+    def is_statement_symbolic_state(self):
+        return type(self) is StatementSymbolicState
+    
     def add_child(self, child_symbolic_state):
         """
         Add a child symbolic state to self.
@@ -210,6 +213,39 @@ class SCFG():
             visited += unvisited_children
         
         return reachable
+    
+    def get_next_symbolic_states(self, program_variable, base_symbolic_state) -> list:
+        """
+        Given a program variable and a base symbolic state, determine the symbolic states
+        reachable from base_symbolic_state for which there is some path on which they are
+        the first symbolic states encountered to change program_variable.
+
+        Do this by recursively traversing the SCFG from base_symbolic_state to simulate
+        the possible paths.  Each time a symbolic state is encountered that changes program_variable,
+        end recursion there and add that symbolic state to a global list.
+        """
+        # recurse with shared list
+        list_of_possible_next_symbolic_states = []
+        self._get_next_symbolic_states(program_variable, base_symbolic_state, list_of_possible_next_symbolic_states)
+        return list_of_possible_next_symbolic_states
+
+    
+    def _get_next_symbolic_states(self, program_variable, current_symbolic_state, list_of_nexts: list):
+        """
+        Recursive case for get_next_symbolic_states.
+        """
+        # check to see whether current_symbolic_state changes program_variable
+        if (current_symbolic_state.is_statement_symbolic_state() and
+            program_variable in current_symbolic_state.get_symbols_changed()):
+            # we've found a symbolic state that qualifies as next
+            # add to the list of nexts, and don't recurse any further
+            if current_symbolic_state not in list_of_nexts:
+                list_of_nexts.append(current_symbolic_state)
+        else:
+            # recurse on each child
+            for child in current_symbolic_state.get_children():
+                self._get_next_symbolic_states(program_variable, child, list_of_nexts)
+            
 
     
     def subprogram_to_scfg(self, subprogram: list, parent_symbolic_state: SymbolicState):

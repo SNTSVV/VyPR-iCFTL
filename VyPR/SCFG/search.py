@@ -128,7 +128,7 @@ class SCFGSearcher():
                 relevant_scfg = self._function_name_to_scfg_map[base_function_name]
                 # the functions are equal, so we traverse forwards in the relevant SCFG
                 relevant_symbolic_states = \
-                    relevant_scfg.get_reachable_symbolic_states_from_symbol(
+                    relevant_scfg.get_next_symbolic_states(
                         program_variable,
                         base_symbolic_state
                     )
