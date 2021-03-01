@@ -5,6 +5,7 @@ Module for command line interface with the Instrumentation package.
 import ast
 import os
 import argparse
+import pprint
 
 from VyPR.Specifications.builder import Specification, all_are_true, one_is_true, not_true, timeBetween
 from VyPR.Specifications.predicates import changes, calls, future
@@ -29,7 +30,9 @@ args = parser.parse_args()
 analyser = Analyser(args.spec_file, args.root_dir)
 
 # compute instrumentation points
-analyser.compute_instrumentation_points()
+symbolic_states = analyser.compute_instrumentation_points()
+
+pprint.pprint(symbolic_states)
 
 # close logging
 logger.log.close()

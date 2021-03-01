@@ -21,8 +21,6 @@ Based on these maps, the constraint part of the specification is then inspected
 to determine the additional symbolic states/pairs of symbolic states that are needed.
 """
 
-import pprint
-
 from VyPR.Specifications.builder import Specification, Forall
 from VyPR.Specifications.constraints import Constraint
 from VyPR.Instrumentation.prepare import prepare_specification
@@ -78,6 +76,8 @@ class Analyser():
         # based on these maps, compute a map (binding index, atom index, subatom index) -> list of symbolic states
         # of intrumentation points
         instrumentation_point_map = self.inspect_constraints()
+
+        return instrumentation_point_map
     
     def inspect_quantifiers(self) -> list:
         """
