@@ -4,6 +4,7 @@ Module to handle logging logic.
 
 import os
 import datetime
+import inspect
 
 class Log():
     """
@@ -18,7 +19,7 @@ class Log():
         self._handle.close()
     
     def get_formatted_message(self, message):
-        return f"[{datetime.datetime.now()}] [%s] {message}\n"
+        return f"[{datetime.datetime.now()}] [{inspect.stack()[2].function}] [%s] {message}\n"
     
     def info(self, message):
         self._handle.write(self.get_formatted_message(message) % "info")

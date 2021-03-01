@@ -26,6 +26,7 @@ from VyPR.Specifications.constraints import Constraint, ConcreteStateVariable, T
 from VyPR.Instrumentation.prepare import prepare_specification
 from VyPR.SCFG.prepare import construct_scfg_of_function
 from VyPR.SCFG.search import SCFGSearcher
+import VyPR.Logging.logger as logger
 
 class Analyser():
     """
@@ -40,18 +41,24 @@ class Analyser():
         are defined.
         """
         # import specification from the file given
+        logger.log.info("Preparing specification...")
         self._specification = prepare_specification(specification_file)
 
+        logger.log.info(f"Specification is\n{self._specification}")
+
         # get the list of functions referred to in the specification
+        logger.log.info("Obtaining list of all functions referred to in the specification")
         self._all_functions = self._specification.get_function_names_used()
 
         # get the scfg of each of these functions
+        logger.log.info("Building map from functions used in the specification to their symbolic control-flow graphs")
         self._function_name_to_scfg_map = {}
         # iterate through the list of functions
         for function in self._all_functions:
             self._function_name_to_scfg_map[function] = construct_scfg_of_function(function)
         
         # initialise SCFGSearcher instance
+        logger.log.info("Initialising a searcher for the symbolic control-flow graphs")
         self._scfg_searcher = SCFGSearcher(self._function_name_to_scfg_map)
     
     def compute_instrumentation_points(self) -> list:

@@ -98,7 +98,7 @@ class Specification():
                     # will stop at the next ieration
                     current_obj = current_obj._constraint
         
-        logger.log.info(f"Map is {variable_to_obj}")
+        logger.log.info(f"Map from variable names to variable objects is {variable_to_obj}")
         
         return variable_to_obj
     

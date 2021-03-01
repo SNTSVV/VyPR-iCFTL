@@ -2,12 +2,15 @@
 Module containing logic for preparation for instrumentation.
 """
 
+import VyPR.Logging.logger as logger
+
 def prepare_specification(filename: str):
     """
     Given the filename in which the specification is found,
     read it in, add necessary imports, then write to a temporary file
     ready for import.
     """
+    logger.log.info(f"Reading specification from file '{filename}'")
     # read specification, add imports, write to temporary specification file
     with open(filename, "r") as h:
         # read
@@ -21,10 +24,12 @@ from VyPR.Specifications.predicates import changes, calls, future
         """
 
     # write to temporary file
+    logger.log.info("Writing full specification code to temporary file 'tmp_spec.py'")
     with open("tmp_spec.py", "w") as h:
         h.write(specification_code)
 
     # import the specification
+    logger.log.info("Importing specification from newly written module")
     from tmp_spec import specification
 
     return specification
