@@ -24,7 +24,6 @@ to determine the additional symbolic states/pairs of symbolic states that are ne
 from VyPR.Specifications.builder import Specification, Forall
 from VyPR.Specifications.constraints import Constraint
 from VyPR.Instrumentation.prepare import prepare_specification
-from VyPR.SCFG.prepare import construct_scfg_of_function
 from VyPR.SCFG.search import SCFGSearcher
 import VyPR.Logging.logger as logger
 
@@ -40,6 +39,9 @@ class Analyser():
         root_directory is the directory with respect to which fully-qualified function names
         are defined.
         """
+        # initialise function name to scfg map
+        self._function_name_to_scfg_map = None
+
         # import specification from the file given
         logger.log.info("Preparing specification...")
         self._specification = prepare_specification(specification_file)
@@ -50,21 +52,52 @@ class Analyser():
         logger.log.info("Obtaining list of all functions referred to in the specification")
         self._all_functions = self._specification.get_function_names_used()
 
-        # get the scfg of each of these functions
-        logger.log.info("Building map from functions used in the specification to their symbolic control-flow graphs")
-        self._function_name_to_scfg_map = {}
-        self._function_name_to_ast_list_map = {}
-        # iterate through the list of functions
-        for function in self._all_functions:
-            self._function_name_to_ast_list_map[function], self._function_name_to_scfg_map[function] = \
-                construct_scfg_of_function(root_directory, function)
-        
-        # initialise SCFGSearcher instance
-        logger.log.info("Initialising a searcher for the symbolic control-flow graphs")
-        self._scfg_searcher = SCFGSearcher(self._function_name_to_scfg_map)
+        # derive the list of modules from this the of functions
+        self._all_modules = self._derive_list_of_modules()
     
-    def get_function_to_ast_list_map(self) -> list:
-        return self._function_name_to_ast_list_map
+    def initialise(self, function_name_to_scfg_map):
+        """
+        SCFG search logic is separated from the constructor to allow the list of functions
+        computed during the constructor to be used by the Instrument class to derive ASTs.
+        """
+
+        # initialise the map from function names to SCFGs
+        self._function_name_to_scfg_map = function_name_to_scfg_map
+        
+        # initialise SCFGSearcher instance using the function name -> SCFG map
+        logger.log.info("Initialising a searcher for the symbolic control-flow graphs")
+        self._scfg_searcher = SCFGSearcher(function_name_to_scfg_map)
+    
+    def get_scfg_searcher(self):
+        return self._scfg_searcher
+    
+    def _derive_list_of_modules(self):
+        """
+        Derive the list of modules from self._all_functions.
+
+        For now, just split by ., remove the last element of the list, and join back together.
+        """
+        # initialise empty list of modules
+        all_modules = []
+        # iterate through functions, getting the module name
+        for function in self._all_functions:
+            # split the function name
+            sequence = function.split(".")
+            # remove the function part
+            module_part = sequence[:-1]
+            # join to get the module name
+            module_name = ".".join(module_part)
+            # add to list
+            if module_name not in all_modules:
+                all_modules.append(module_name)
+        
+        return all_modules
+    
+    def get_all_modules(self):
+        return self._all_modules
+    
+    def get_all_functions(self):
+        return self._all_functions
     
     def compute_instrumentation_points(self) -> list:
         """

@@ -33,5 +33,8 @@ instrument_instance = Instrument(args.spec_file, args.root_dir)
 # insert instruments
 instrument_instance.insert_instruments()
 
+# compile
+instrument_instance.compile()
+
 # close logging
 logger.log.close()
