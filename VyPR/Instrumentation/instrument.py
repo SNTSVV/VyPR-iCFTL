@@ -174,7 +174,6 @@ class Instrument():
             module_name = triple[0]
             # insert instrument
             self._module_to_lines[module_name].insert(triple[1], triple[2])
-
     
     def get_indentation_level_of_stmt(self, stmt: str) -> int:
         """
@@ -231,18 +230,6 @@ class Instrument():
             code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
         
         return code
-        # check type of returned code - can be either list or string
-        # string for single instruments, list for three instruments when a duration must be measured
-        # (first and second timestamps, difference measurement)
-        # if type(instrument_code) is str:
-        #     # place the code at a single location
-        #     module_lines.insert(line_index+1, instrument_code)
-        # elif type(instrument_code) is list:
-        #     # place the first statement before the target line, the second after it and the third after that one
-        #     # insert the instruments backwards
-        #     module_lines.insert(line_index+1, instrument_code[2])
-        #     module_lines.insert(line_index+1, instrument_code[1])
-        #     module_lines.insert(line_index, instrument_code[0])
     
     def _get_original_filename_from_module(self, module: str) -> str:
         """
