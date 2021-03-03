@@ -73,7 +73,7 @@ class Specification():
         # iterate through the structure, using the type Constraint as a place to stop
         logger.log.info("Traversing specification structure")
         while type(current_obj) is not Constraint:
-            logger.log.info(f"Processing {type(current_obj)} instance")
+            logger.log.info(f"current_obj = {type(current_obj)}")
             # traverse depending on the type of the current object
             if type(current_obj) is Specification:
                 current_obj = current_obj._quantifier
@@ -98,7 +98,7 @@ class Specification():
                     # will stop at the next ieration
                     current_obj = current_obj._constraint
         
-        logger.log.info(f"Map from variable names to variable objects is {variable_to_obj}")
+        logger.log.info(f"variable_to_obj = {variable_to_obj}")
         
         return variable_to_obj
     
@@ -261,7 +261,7 @@ class Forall():
         if not predicate._predicate._during_function:
             raise Exception(f"Predicate used for variable {variable} not complete")
 
-        logger.log.info(f"Adding quantifier with arguments {quantified_variable}")
+        logger.log.info(f"Initialising new instance of Forall with quantified_variable = {quantified_variable}")
 
         # store the quantifier
         self._quantifier = Forall(self._specification_obj, **quantified_variable)
@@ -278,7 +278,7 @@ class Forall():
         if type(expression) is not type(lambda:0):
             raise Exception("Constraint given must be a lambda expression.")
 
-        logger.log.info("Setting constraint to check")
+        logger.log.info("Setting self._constraint to new Constraint instance")
 
         self._constraint = Constraint(self._specification_obj, expression)
 

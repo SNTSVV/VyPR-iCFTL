@@ -4,7 +4,6 @@ Module containing the logic for adding instrumentation code based on the results
 
 import os
 import ast
-import pprint
 from shutil import copyfile
 
 from VyPR.Instrumentation.analyse import Analyser
@@ -15,6 +14,7 @@ from VyPR.Specifications.constraints import (ValueInConcreteState,
                                                 ConcreteStateAfterTransition,
                                                 TimeBetween)
 from VyPR.SCFG.prepare import construct_scfg_of_function
+import VyPR.Logging.logger as logger
 
 class Instrument():
     """
@@ -29,19 +29,27 @@ class Instrument():
         # store the root directory
         self._root_directory = root_directory
 
+        logger.log.info("Importing specification to set self._specification")
+
         # import specification from the file given
         self._specification = prepare_specification(specification_file)
 
+        logger.log.info(f"Imported specification is\n{self._specification}")
+
         # instantiate the analyser
+        logger.log.info("Initialising Analyser instance")
         self._analyser = Analyser(self._specification, root_directory)
 
         # get the list of all modules that contain functions referred to in the specification
+        logger.log.info("Calling self._analyser.get_all_modules to get a list of all modules relevant to the specification")
         self._all_modules = self._analyser.get_all_modules()
 
         # reset instrumented files
+        logger.log.info("Removing existing instrumented files")
         self._reset_instrumented_files()
 
         # get the ASTs and lines of each of these modules
+        logger.log.info("Getting AST and source code line list for each module")
         self._module_to_ast_list = {}
         self._module_to_lines = {}
         # iterate through modules and construct ASTs for each
@@ -52,13 +60,16 @@ class Instrument():
             self._module_to_lines[module] = self._get_lines_from_module(module)
 
         # get the list of all functions used in the specification
+        logger.log.info("Calling self._analyser.get_all_functions to get a list of functions in the specification")
         self._all_functions = self._analyser.get_all_functions()
 
         # get the scfg of each of these functions
+        logger.log.info("Constructing SCFGs of each function")
         # initialise empty map
         self._function_name_to_scfg_map = {}
         # get SCFG and AST for each function
         for function in self._all_functions:
+            logger.log.info(f"Calling construct_scfg_of_function on function '{function}'")
             # get module from function
             module = self._get_module_from_function(function)
             # get scfg for this function based on self._filename_to_ast_list[filename]
@@ -66,9 +77,11 @@ class Instrument():
                 construct_scfg_of_function(module, self._module_to_ast_list[module], function)
         
         # initialise the analyser class
+        logger.log.info("Calling self._analyser.initialise")
         self._analyser.initialise(self._function_name_to_scfg_map)
 
         # compute the instrumentation tree
+        logger.log.info("Determining statements in modules that must be instrumented")
         self._instrumentation_tree = self._analyser.compute_instrumentation_points()
     
     def _reset_instrumented_files(self):
@@ -129,21 +142,29 @@ class Instrument():
         Traverse the instrumentation tree structure and, for each symbolic state,
         place an instrument at an appropriate position around the AST provided by the symbolic state.
         """
+        logger.log.info("Inserting instruments into source code")
         # get atomic constraints of the specification so we can decide on what each instrument should look like
         atomic_constraints = self._specification.get_constraint().get_atomic_constraints()
-        # initialise empty list of pairs (line_index, instrument_code)
-        list_of_instrument_pairs = []
+        logger.log.info(f"atomic_constraints = {atomic_constraints}")
+        # initialise empty list of triples (module_name, line_index, instrument_code)
+        list_of_instrument_triples = []
         # traverse self._instrumentation_tree
         for map_index in self._instrumentation_tree:
+            logger.log.info(f"map_index = {map_index}")
             for atom_index in self._instrumentation_tree[map_index]:
+                logger.log.info(f"atom_index = {atom_index}")
                 # get the atom at atom_index
                 relevant_atom = atomic_constraints[atom_index]
+                logger.log.info(f"relevant_atom = {relevant_atom}")
                 # iterate through the subatom indices
                 for subatom_index in self._instrumentation_tree[map_index][atom_index]:
+                    logger.log.info(f"subatom_index = {subatom_index}")
                     # get the subatom at subatom_index
                     relevant_subatom = relevant_atom.get_expression(subatom_index)
+                    logger.log.info(f"relevant_subatom = {relevant_subatom}")
                     # iterate through the symbolic states
                     for symbolic_state in self._instrumentation_tree[map_index][atom_index][subatom_index]:
+                        logger.log.info(f"Processing symbolic_state = {symbolic_state}")
                         # get the index in the block of asts where the instrument's code will be inserted
                         index_in_block = symbolic_state.get_ast_object().parent_block.index(symbolic_state.get_ast_object())
                         # get the line number at which to insert the code
@@ -154,8 +175,10 @@ class Instrument():
                         function = self._analyser.get_scfg_searcher().get_function_name_of_symbolic_state(symbolic_state)
                         # derive the module name from the function
                         module = self._get_module_from_function(function)
+                        logger.log.info(f"Generating list of instrument triples with "\
+                            f"index_in_block={index_in_block}, line_number={line_number}, line_index={line_index}, function={function}, module={module}")
                         # generate and append the instrument code
-                        list_of_instrument_pairs += self._generate_instrument_code(
+                        list_of_instrument_triples += self._generate_instrument_code(
                             module,
                             line_index,
                             map_index,
@@ -167,9 +190,9 @@ class Instrument():
         # sort instrument code by line index descending (that way we don't have to recompute line numbers)
         # we rely on this sorting being stable - otherwise some variables defined by instruments could be undefined
         # if they're used before their definition
-        list_of_instrument_pairs = list(reversed(sorted(list_of_instrument_pairs, key=lambda triple : triple[1])))
+        list_of_instrument_triples = list(reversed(sorted(list_of_instrument_triples, key=lambda triple : triple[1])))
         # insert the instruments
-        for triple in list_of_instrument_pairs:
+        for triple in list_of_instrument_triples:
             # get the module inside which this instrument should be placed
             module_name = triple[0]
             # insert instrument
@@ -194,6 +217,7 @@ class Instrument():
         """
         Given all of the necessary information, generate the relevant instrumentation code.
         """
+        logger.log.info(f"Getting lines of module_name = {module_name}")
         # get the module lines
         module_lines = self._module_to_lines[module_name]
         # get the indentation level of the code to be inserted
@@ -203,6 +227,7 @@ class Instrument():
         # construct the indentation string
         indentation = " "*indentation_level
         # check the instrument type
+        logger.log.info(f"Generating instrument code according to subatom = {subatom} with type {type(subatom)}")
         if type(subatom) is ValueInConcreteState:
             # construct the instrument code
             code = f"""{indentation}print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % {subatom.get_program_variable()})"""
@@ -253,8 +278,10 @@ class Instrument():
         """
         Given the modified source code of the modules, write new files (backup old files).
         """
+        logger.log.info("Writing instrumented code")
         # iterate through modules
         for module in self._all_modules:
+            logger.log.info(f"Processing module = {module}")
 
             # get lines for this module
             lines = self._module_to_lines[module]
@@ -264,6 +291,8 @@ class Instrument():
             # get the original and backup filenames from the module
             original_filename = self._get_original_filename_from_module(module)
             backup_filename = self._get_backup_filename_from_module(module)
+
+            logger.log.info(f"Instrumenting original_filename = {original_filename}, while keeping a backup in backup_filename = {backup_filename}")
 
             # if it exists, rename the backup to the original
             if os.path.isfile(backup_filename):
