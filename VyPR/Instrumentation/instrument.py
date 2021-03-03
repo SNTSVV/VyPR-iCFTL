@@ -204,10 +204,8 @@ class Instrument():
         indentation = " "*indentation_level
         # check the instrument type
         if type(subatom) is ValueInConcreteState:
-            # construct the measurement code
-            measurement_code = f"measurement = {subatom.get_program_variable()}"
             # construct the instrument code
-            code = f"""{indentation}{measurement_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % measurement)"""
+            code = f"""{indentation}print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % {subatom.get_program_variable()})"""
             code = [(module_name, line_index+1, code)]
         elif type(subatom) is TimeBetween:
             # construct measurement code
@@ -224,7 +222,7 @@ class Instrument():
             code_part_1 = \
                 f"""{indentation}{measurement_start_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_start)"""
             code_part_2 = \
-                f"""{indentation}{measurement_end_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, , measurement = %s" % ts_end)"""
+                f"""{indentation}{measurement_end_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_end)"""
             code_part_3 = \
                 f"""{indentation}{measurement_difference_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % duration)"""
             code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
