@@ -131,6 +131,8 @@ class Instrument():
         """
         # get atomic constraints of the specification so we can decide on what each instrument should look like
         atomic_constraints = self._specification.get_constraint().get_atomic_constraints()
+        # initialise empty list of pairs (line_index, instrument_code)
+        list_of_instrument_pairs = []
         # traverse self._instrumentation_tree
         for map_index in self._instrumentation_tree:
             for atom_index in self._instrumentation_tree[map_index]:
@@ -152,8 +154,8 @@ class Instrument():
                         function = self._analyser.get_scfg_searcher().get_function_name_of_symbolic_state(symbolic_state)
                         # derive the module name from the function
                         module = self._get_module_from_function(function)
-                        # generate and insert the instrument code
-                        self._insert_instrument_code(
+                        # generate and append the instrument code
+                        list_of_instrument_pairs += self._generate_instrument_code(
                             module,
                             line_index,
                             map_index,
@@ -161,6 +163,18 @@ class Instrument():
                             subatom_index,
                             relevant_subatom
                         )
+        
+        # sort instrument code by line index descending (that way we don't have to recompute line numbers)
+        # we rely on this sorting being stable - otherwise some variables defined by instruments could be undefined
+        # if they're used before their definition
+        list_of_instrument_pairs = list(reversed(sorted(list_of_instrument_pairs, key=lambda triple : triple[1])))
+        # insert the instruments
+        for triple in list_of_instrument_pairs:
+            # get the module inside which this instrument should be placed
+            module_name = triple[0]
+            # insert instrument
+            self._module_to_lines[module_name].insert(triple[1], triple[2])
+
     
     def get_indentation_level_of_stmt(self, stmt: str) -> int:
         """
@@ -177,34 +191,15 @@ class Instrument():
         
         return number_of_spaces
     
-    def _insert_instrument_code(self, module_name: str, line_index: int, map_index: int, atom_index: int, subatom_index: int, relevant_subatom):
+    def _generate_instrument_code(self, module_name: str, line_index: int, map_index: int, atom_index: int, subatom_index: int, subatom):
         """
-        Given all of the necessary information, insert the relevant instrumentation code.
+        Given all of the necessary information, generate the relevant instrumentation code.
         """
         # get the module lines
         module_lines = self._module_to_lines[module_name]
         # get the indentation level of the code to be inserted
         indentation_level = self.get_indentation_level_of_stmt(module_lines[line_index])
         # generate instrument code
-        instrument_code = self._generate_instrument_code(relevant_subatom, map_index, atom_index, subatom_index, indentation_level)
-        # check type of returned code - can be either list or string
-        # string for single instruments, list for three instruments when a duration must be measured
-        # (first and second timestamps, difference measurement)
-        if type(instrument_code) is str:
-            # place the code at a single location
-            module_lines.insert(line_index+1, instrument_code)
-        elif type(instrument_code) is list:
-            # place the first statement before the target line, the second after it and the third after that one
-            # insert the instruments backwards
-            module_lines.insert(line_index+1, instrument_code[2])
-            module_lines.insert(line_index+1, instrument_code[1])
-            module_lines.insert(line_index, instrument_code[0])
-    
-    def _generate_instrument_code(self, subatom, map_index: int, atom_index: int, subatom_index: int, indentation_level: int) -> str:
-        """
-        Given the map, atom and subatom indices, generate the code to insert based on the subatom type
-        """
-        # define code template
         # TODO: make function the instrument calls a parameter
         # construct the indentation string
         indentation = " "*indentation_level
@@ -214,11 +209,13 @@ class Instrument():
             measurement_code = f"measurement = {subatom.get_program_variable()}"
             # construct the instrument code
             code = f"""{indentation}{measurement_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % measurement)"""
+            code = [(module_name, line_index+1, code)]
         elif type(subatom) is TimeBetween:
             # construct measurement code
             measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
             # construct the instrument code
             code = f"""{indentation}{measurement_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_{subatom_index})"""
+            code = [(module_name, line_index, code)]
         elif type(subatom) is DurationOfTransition:
             # construct measurement code
             measurement_start_code = "ts_start = datetime.datetime.now()"
@@ -231,9 +228,21 @@ class Instrument():
                 f"""{indentation}{measurement_end_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, , measurement = %s" % ts_end)"""
             code_part_3 = \
                 f"""{indentation}{measurement_difference_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % duration)"""
-            code = [code_part_1, code_part_2, code_part_3]
+            code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
         
         return code
+        # check type of returned code - can be either list or string
+        # string for single instruments, list for three instruments when a duration must be measured
+        # (first and second timestamps, difference measurement)
+        # if type(instrument_code) is str:
+        #     # place the code at a single location
+        #     module_lines.insert(line_index+1, instrument_code)
+        # elif type(instrument_code) is list:
+        #     # place the first statement before the target line, the second after it and the third after that one
+        #     # insert the instruments backwards
+        #     module_lines.insert(line_index+1, instrument_code[2])
+        #     module_lines.insert(line_index+1, instrument_code[1])
+        #     module_lines.insert(line_index, instrument_code[0])
     
     def _get_original_filename_from_module(self, module: str) -> str:
         """
