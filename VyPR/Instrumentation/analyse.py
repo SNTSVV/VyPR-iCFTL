@@ -23,7 +23,6 @@ to determine the additional symbolic states/pairs of symbolic states that are ne
 
 from VyPR.Specifications.builder import Specification, Forall
 from VyPR.Specifications.constraints import Constraint
-from VyPR.Instrumentation.prepare import prepare_specification
 from VyPR.SCFG.search import SCFGSearcher
 import VyPR.Logging.logger as logger
 
@@ -32,7 +31,7 @@ class Analyser():
     Class for static analysis of source code based on an iCFTL specification.
     """
 
-    def __init__(self, specification_file, root_directory):
+    def __init__(self, specification, root_directory):
         """
         Store the specification and function -> scfg map for use in other methods.
 
@@ -42,9 +41,8 @@ class Analyser():
         # initialise function name to scfg map
         self._function_name_to_scfg_map = None
 
-        # import specification from the file given
-        logger.log.info("Preparing specification...")
-        self._specification = prepare_specification(specification_file)
+        # store specification
+        self._specification = specification
 
         logger.log.info(f"Specification is\n{self._specification}")
 

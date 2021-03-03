@@ -366,6 +366,9 @@ class ValueInConcreteState():
     def get_concrete_state_expression(self):
         return self._concrete_state_expression
     
+    def get_program_variable(self):
+        return self._program_variable_name
+    
     def __lt__(self, other):
         if type(other) in [int, str, float]:
             return ValueInConcreteStateLessThanConstant(self, other)
@@ -397,6 +400,10 @@ class ValueInConcreteStateEqualsConstant(ConstraintBase, NormalAtom):
     
     def get_value_expression(self):
         return self._value_expression
+    
+    def get_expression(self):
+        return self.get_value_expression()
+
 
 class ValueInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):
     """
@@ -413,6 +420,9 @@ class ValueInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):
     
     def get_value_expression(self):
         return self._value_expression
+    
+    def get_expression(self, index):
+        return self.get_value_expression()
 
 class ValueInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
     """
@@ -429,6 +439,9 @@ class ValueInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
     
     def get_value_expression(self):
         return self._value_expression
+    
+    def get_expression(self, index):
+        return self.get_value_expression()
 
 """
 Attributes of transitions.
@@ -500,6 +513,9 @@ class DurationOfTransitionLessThanConstant(ConstraintBase, NormalAtom):
     
     def get_transition_duration_obj(self):
         return self._transition_duration
+    
+    def get_expression(self, index):
+        return self.get_transition_duration_obj()
 
 class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
     """
@@ -515,6 +531,9 @@ class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
     
     def get_transition_duration_obj(self):
         return self._transition_duration
+    
+    def get_expression(self, index):
+        return self.get_transition_duration_obj()
 
 """
 Temporal operators.
@@ -627,7 +646,7 @@ class TimeBetween():
     def get_rhs_expression(self):
         return self._concrete_state_expression_2
 
-class TimeBetweenLessThanConstant(ConstraintBase, NormalAtom):
+class TimeBetweenLessThanConstant(ConstraintBase, MixedAtom):
     """
     Class to represent the atomic constraint timeBetween(q, q') < n for some numerical constant n.
     """
@@ -641,3 +660,10 @@ class TimeBetweenLessThanConstant(ConstraintBase, NormalAtom):
     
     def get_time_between_expression(self):
         return self._time_between_expression
+    
+    def get_expression(self, index):
+        # get the time between object
+        expressions = self.get_time_between_expression()
+        # construct a list of the lhs and rhs of the time between operator
+        expressions = [expressions.get_lhs_expression(), expression.get_rhs_expression()]
+        return expressions[index]

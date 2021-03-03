@@ -8,6 +8,12 @@ import pprint
 from shutil import copyfile
 
 from VyPR.Instrumentation.analyse import Analyser
+from VyPR.Instrumentation.prepare import prepare_specification
+from VyPR.Specifications.constraints import (ValueInConcreteState,
+                                                DurationOfTransition,
+                                                ConcreteStateBeforeTransition,
+                                                ConcreteStateAfterTransition,
+                                                TimeBetween)
 from VyPR.SCFG.prepare import construct_scfg_of_function
 
 class Instrument():
@@ -23,8 +29,11 @@ class Instrument():
         # store the root directory
         self._root_directory = root_directory
 
+        # import specification from the file given
+        self._specification = prepare_specification(specification_file)
+
         # instantiate the analyser
-        self._analyser = Analyser(specification_file, root_directory)
+        self._analyser = Analyser(self._specification, root_directory)
 
         # get the list of all modules that contain functions referred to in the specification
         self._all_modules = self._analyser.get_all_modules()
@@ -120,34 +129,38 @@ class Instrument():
         Traverse the instrumentation tree structure and, for each symbolic state,
         place an instrument at an appropriate position around the AST provided by the symbolic state.
         """
+        # get atomic constraints of the specification so we can decide on what each instrument should look like
+        atomic_constraints = self._specification.get_constraint().get_atomic_constraints()
         # traverse self._instrumentation_tree
         for map_index in self._instrumentation_tree:
             for atom_index in self._instrumentation_tree[map_index]:
+                # get the atom at atom_index
+                relevant_atom = atomic_constraints[atom_index]
+                # iterate through the subatom indices
                 for subatom_index in self._instrumentation_tree[map_index][atom_index]:
+                    # get the subatom at subatom_index
+                    relevant_subatom = relevant_atom.get_expression(subatom_index)
                     # iterate through the symbolic states
                     for symbolic_state in self._instrumentation_tree[map_index][atom_index][subatom_index]:
                         # get the index in the block of asts where the instrument's code will be inserted
                         index_in_block = symbolic_state.get_ast_object().parent_block.index(symbolic_state.get_ast_object())
-                        # get a neighbouring statement's line number
-                        neighbour_line_number = symbolic_state.get_ast_object().parent_block[index_in_block].lineno
-                        index = neighbour_line_number - 1
+                        # get the line number at which to insert the code
+                        line_number = symbolic_state.get_ast_object().parent_block[index_in_block].lineno
+                        # get the index in the list of lines
+                        line_index = line_number - 1
                         # get the function inside which symbolic_state is found
                         function = self._analyser.get_scfg_searcher().get_function_name_of_symbolic_state(symbolic_state)
                         # derive the module name from the function
                         module = self._get_module_from_function(function)
-                        # get the indentation level
-                        indentation_level = self.get_indentation_level_of_stmt(
-                            self._module_to_lines[module][index]
-                        )
-                        # generate the code to insert
-                        instrument_code = self.generate_instrument_code(
+                        # generate and insert the instrument code
+                        self._insert_instrument_code(
+                            module,
+                            line_index,
                             map_index,
                             atom_index,
                             subatom_index,
-                            indentation_level
+                            relevant_subatom
                         )
-                        # insert the code into the code lines
-                        self._module_to_lines[module].insert(index, instrument_code)
     
     def get_indentation_level_of_stmt(self, stmt: str) -> int:
         """
@@ -164,14 +177,62 @@ class Instrument():
         
         return number_of_spaces
     
-    def generate_instrument_code(self, map_index: int, atom_index: int, subatom_index: int, indentation_level: int) -> str:
+    def _insert_instrument_code(self, module_name: str, line_index: int, map_index: int, atom_index: int, subatom_index: int, relevant_subatom):
         """
-        Given the map, atom and subatom indices, generate the code to insert.
+        Given all of the necessary information, insert the relevant instrumentation code.
+        """
+        # get the module lines
+        module_lines = self._module_to_lines[module_name]
+        # get the indentation level of the code to be inserted
+        indentation_level = self.get_indentation_level_of_stmt(module_lines[line_index])
+        # generate instrument code
+        instrument_code = self._generate_instrument_code(relevant_subatom, map_index, atom_index, subatom_index, indentation_level)
+        # check type of returned code - can be either list or string
+        # string for single instruments, list for three instruments when a duration must be measured
+        # (first and second timestamps, difference measurement)
+        if type(instrument_code) is str:
+            # place the code at a single location
+            module_lines.insert(line_index+1, instrument_code)
+        elif type(instrument_code) is list:
+            # place the first statement before the target line, the second after it and the third after that one
+            # insert the instruments backwards
+            module_lines.insert(line_index+1, instrument_code[2])
+            module_lines.insert(line_index+1, instrument_code[1])
+            module_lines.insert(line_index, instrument_code[0])
+    
+    def _generate_instrument_code(self, subatom, map_index: int, atom_index: int, subatom_index: int, indentation_level: int) -> str:
+        """
+        Given the map, atom and subatom indices, generate the code to insert based on the subatom type
         """
         # define code template
         # TODO: make function the instrument calls a parameter
+        # construct the indentation string
         indentation = " "*indentation_level
-        code = f"""{indentation}print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}")"""
+        # check the instrument type
+        if type(subatom) is ValueInConcreteState:
+            # construct the measurement code
+            measurement_code = f"measurement = {subatom.get_program_variable()}"
+            # construct the instrument code
+            code = f"""{indentation}{measurement_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % measurement)"""
+        elif type(subatom) is TimeBetween:
+            # construct measurement code
+            measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
+            # construct the instrument code
+            code = f"""{indentation}{measurement_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_{subatom_index})"""
+        elif type(subatom) is DurationOfTransition:
+            # construct measurement code
+            measurement_start_code = "ts_start = datetime.datetime.now()"
+            measurement_end_code = "ts_end = datetime.datetime.now()"
+            measurement_difference_code = "duration = ts_end - ts_start"
+            # construct the instrument code
+            code_part_1 = \
+                f"""{indentation}{measurement_start_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_start)"""
+            code_part_2 = \
+                f"""{indentation}{measurement_end_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, , measurement = %s" % ts_end)"""
+            code_part_3 = \
+                f"""{indentation}{measurement_difference_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % duration)"""
+            code = [code_part_1, code_part_2, code_part_3]
+        
         return code
     
     def _get_original_filename_from_module(self, module: str) -> str:
