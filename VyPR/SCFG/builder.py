@@ -422,25 +422,28 @@ class SCFG():
         The target program variables, along with any functions called on the right-hand-side
         of the assignment, will be included as symbols changed by that Symbolic State
         """
+        logger.log.info("Generating SymbolicState instance from assignment ast")
         # first, add a reference from stmt_ast to its parent block
         stmt_ast.parent_block = stmt_ast_parent_block
-        logger.log.info(f"Instantiating symbolic state for AST instance stmt_ast = {stmt_ast}")
+        logger.log.info("Instantiating symbolic state for AST instance stmt_ast = %s" % stmt_ast)
         # determine the program variables assigned on the left-hand-side
         targets: list = stmt_ast.targets
         # extract names - for now just care about normal program variables, not attributes or functions
+        logger.log.info("Extracting list of assignment target names")
         target_names: list = []
         for target in targets:
             target_names += self._extract_symbol_names_from_target(target)
-        logger.log.info(f"List of all program variables changed is {target_names}")
+        logger.log.info("List of all program variables changed is %s" % target_names)
         # extract function names
         assigned_value = stmt_ast.value
         function_names: list = self._extract_function_names(assigned_value)
-        logger.log.info(f"List of all program functions called is {function_names}")
+        logger.log.info("List of all program functions called is %s" % function_names)
         # merge the two lists of symbols
+        logger.log.info("Merging lists of assignment target names and function names")
         all_symbols: list = target_names + function_names
-        logger.log.info(f"List of all symbols to mark as changed in the symbolic state is {all_symbols}")
+        logger.log.info("List of all symbols to mark as changed in the symbolic state is %s" % all_symbols)
         # set up a SymbolicState instance
-        logger.log.info(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
+        logger.log.info("Instantiating new StatementSymbolicState instance with all_symbols = %s" % all_symbols)
         symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     
@@ -462,7 +465,7 @@ class SCFG():
                 all_symbols.append(walked_ast.id)
         
         # instantiate symbolic state
-        logger.log.info(f"Instantiating new SymbolicState instance with symbols {all_symbols}")
+        logger.log.info(f"Instantiating new StatementSymbolicState instance with symbols {all_symbols}")
         symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
         return symbolic_state
     

@@ -190,6 +190,7 @@ class Instrument():
         # sort instrument code by line index descending (that way we don't have to recompute line numbers)
         # we rely on this sorting being stable - otherwise some variables defined by instruments could be undefined
         # if they're used before their definition
+        # get list of instrument triples
         list_of_instrument_triples = list(reversed(sorted(list_of_instrument_triples, key=lambda triple : triple[1])))
         # insert the instruments
         for triple in list_of_instrument_triples:
@@ -197,6 +198,30 @@ class Instrument():
             module_name = triple[0]
             # insert instrument
             self._module_to_lines[module_name].insert(triple[1], triple[2])
+        
+        # now, insert function definitions for writing trace to file
+        trace_writing_function = """
+import json
+import datetime
+trace_file_handle = open(f"traces/trace-{datetime.datetime.now()}", "a")
+def write_to_trace(map_index, atom_index, subatom_index, measurement):
+    trace_file_handle.write("%s\\n" % json.dumps(
+            {
+                "time": datetime.datetime.now().isoformat(),
+                "map_index": map_index,
+                "atom_index": atom_index,
+                "subatom_index": subatom_index,
+                "measurement": measurement
+            }
+        )
+    )
+        """
+        lines = trace_writing_function.split("\n")
+        # for each module, insert these lines at the beginning
+        for module_name in self._module_to_lines:
+            # insert lines (reversed, since each time we insert at the beginning)
+            for line in reversed(lines):
+                self._module_to_lines[module_name].insert(0, line)
     
     def get_indentation_level_of_stmt(self, stmt: str) -> int:
         """
@@ -230,26 +255,26 @@ class Instrument():
         logger.log.info(f"Generating instrument code according to subatom = {subatom} with type {type(subatom)}")
         if type(subatom) is ValueInConcreteState:
             # construct the instrument code
-            code = f"""{indentation}print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % {subatom.get_program_variable()})"""
+            code = f"""{indentation}write_to_trace({map_index}, {atom_index}, {subatom_index}, {subatom.get_program_variable()})"""
             code = [(module_name, line_index+1, code)]
         elif type(subatom) is TimeBetween:
             # construct measurement code
-            measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
+            measurement_code = f"ts_{subatom_index} = datetime.datetime.now().isoformat()"
             # construct the instrument code
-            code = f"""{indentation}{measurement_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_{subatom_index})"""
+            code = f"""{indentation}{measurement_code}; write_to_trace({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
             code = [(module_name, line_index, code)]
         elif type(subatom) is DurationOfTransition:
             # construct measurement code
             measurement_start_code = "ts_start = datetime.datetime.now()"
             measurement_end_code = "ts_end = datetime.datetime.now()"
-            measurement_difference_code = "duration = ts_end - ts_start"
+            measurement_difference_code = "duration = (ts_end - ts_start).total_seconds()"
             # construct the instrument code
             code_part_1 = \
-                f"""{indentation}{measurement_start_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_start)"""
+                f"""{indentation}{measurement_start_code}"""
             code_part_2 = \
-                f"""{indentation}{measurement_end_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % ts_end)"""
+                f"""{indentation}{measurement_end_code}"""
             code_part_3 = \
-                f"""{indentation}{measurement_difference_code}; print(f"map index = {map_index}, atom index = {atom_index}, subatom index = {subatom_index}, measurement = %s" % duration)"""
+                f"""{indentation}{measurement_difference_code}; write_to_trace({map_index}, {atom_index}, {subatom_index}, duration)"""
             code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
         
         return code
