@@ -199,23 +199,8 @@ class Instrument():
             # insert instrument
             self._module_to_lines[module_name].insert(triple[1], triple[2])
         
-        # now, insert function definitions for writing trace to file
-        trace_writing_function = """
-import json
-import datetime
-trace_file_handle = open(f"traces/trace-{datetime.datetime.now()}", "a")
-def write_to_trace(map_index, atom_index, subatom_index, measurement):
-    trace_file_handle.write("%s\\n" % json.dumps(
-            {
-                "time": datetime.datetime.now().isoformat(),
-                "map_index": map_index,
-                "atom_index": atom_index,
-                "subatom_index": subatom_index,
-                "measurement": measurement
-            }
-        )
-    )
-        """
+        # now, insert additional imports
+        trace_writing_function = """import datetime"""
         lines = trace_writing_function.split("\n")
         # for each module, insert these lines at the beginning
         for module_name in self._module_to_lines:
@@ -251,17 +236,19 @@ def write_to_trace(map_index, atom_index, subatom_index, measurement):
         # TODO: make function the instrument calls a parameter
         # construct the indentation string
         indentation = " "*indentation_level
+        # define instrument function
+        instrument_function = "test_package.vypr_config.online_monitor.send_measurement"
         # check the instrument type
         logger.log.info(f"Generating instrument code according to subatom = {subatom} with type {type(subatom)}")
         if type(subatom) is ValueInConcreteState:
             # construct the instrument code
-            code = f"""{indentation}write_to_trace({map_index}, {atom_index}, {subatom_index}, {subatom.get_program_variable()})"""
+            code = f"""{indentation}{instrument_function}({map_index}, {atom_index}, {subatom_index}, {subatom.get_program_variable()})"""
             code = [(module_name, line_index+1, code)]
         elif type(subatom) is TimeBetween:
             # construct measurement code
             measurement_code = f"ts_{subatom_index} = datetime.datetime.now().isoformat()"
             # construct the instrument code
-            code = f"""{indentation}{measurement_code}; write_to_trace({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
+            code = f"""{indentation}{measurement_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
             code = [(module_name, line_index, code)]
         elif type(subatom) is DurationOfTransition:
             # construct measurement code
@@ -274,7 +261,7 @@ def write_to_trace(map_index, atom_index, subatom_index, measurement):
             code_part_2 = \
                 f"""{indentation}{measurement_end_code}"""
             code_part_3 = \
-                f"""{indentation}{measurement_difference_code}; write_to_trace({map_index}, {atom_index}, {subatom_index}, duration)"""
+                f"""{indentation}{measurement_difference_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, duration)"""
             code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
         
         return code
