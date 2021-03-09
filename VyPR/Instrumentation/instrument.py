@@ -80,9 +80,10 @@ class Instrument():
         logger.log.info("Calling self._analyser.initialise")
         self._analyser.initialise(self._function_name_to_scfg_map)
 
-        # compute the instrumentation tree
+        # compute the instrumentation tree and the list of elements to instrument based on quantifiers
         logger.log.info("Determining statements in modules that must be instrumented")
-        self._instrumentation_tree = self._analyser.compute_instrumentation_points()
+        self._quantifier_instrumentation_points, self._instrumentation_tree = \
+            self._analyser.compute_instrumentation_points()
     
     def _reset_instrumented_files(self):
         """
@@ -148,7 +149,40 @@ class Instrument():
         logger.log.info(f"atomic_constraints = {atomic_constraints}")
         # initialise empty list of triples (module_name, line_index, instrument_code)
         list_of_instrument_triples = []
-        # traverse self._instrumentation_tree
+        # traverse self._instrumentation_tree in order to insert instrumentation points for quantifiers
+        logger.log.info("Inserting instruments for constraints")
+        for map_index in self._instrumentation_tree:
+            logger.log.info(f"map_index = {map_index}")
+            # insert instrumentation points for quantifiers
+            logger.log.info("Inserting instruments for quantifiers")
+            for (map_index, current_map) in enumerate(self._quantifier_instrumentation_points):
+                logger.log.info(f"map_index = {map_index}")
+                # iterate through the variables of the map
+                for variable in current_map:
+                    # get the symbolic state
+                    symbolic_state = current_map[variable]
+                    # get the index in the block of asts where the instrument's code will be inserted
+                    index_in_block = symbolic_state.get_ast_object().parent_block.index(symbolic_state.get_ast_object())
+                    # get the line number at which to insert the code
+                    line_number = symbolic_state.get_ast_object().parent_block[index_in_block].lineno
+                    # get the index in the list of lines
+                    line_index = line_number - 1
+                    # get the function inside which symbolic_state is found
+                    function = self._analyser.get_scfg_searcher().get_function_name_of_symbolic_state(symbolic_state)
+                    # derive the module name from the function
+                    module = self._get_module_from_function(function)
+                    # generate the code
+                    quantifier_instrument_code = self._generate_quantifier_instrument_code(
+                        module,
+                        line_index,
+                        map_index,
+                        variable
+                    )
+                    # append
+                    list_of_instrument_triples.append((module, line_index, quantifier_instrument_code))
+                    
+        # traverse self._instrumentation_tree in order to insert instrumentation points for constraints
+        logger.log.info("Inserting instruments for constraints")
         for map_index in self._instrumentation_tree:
             logger.log.info(f"map_index = {map_index}")
             for atom_index in self._instrumentation_tree[map_index]:
@@ -178,7 +212,7 @@ class Instrument():
                         logger.log.info(f"Generating list of instrument triples with "\
                             f"index_in_block={index_in_block}, line_number={line_number}, line_index={line_index}, function={function}, module={module}")
                         # generate and append the instrument code
-                        list_of_instrument_triples += self._generate_instrument_code(
+                        list_of_instrument_triples += self._generate_constraint_instrument_code(
                             module,
                             line_index,
                             map_index,
@@ -223,9 +257,29 @@ class Instrument():
         
         return number_of_spaces
     
-    def _generate_instrument_code(self, module_name: str, line_index: int, map_index: int, atom_index: int, subatom_index: int, subatom):
+    def _generate_quantifier_instrument_code(self, module_name: str, line_index: int, map_index: int, variable: str):
         """
-        Given all of the necessary information, generate the relevant instrumentation code.
+        Given all necessary information, generate the instrumentation code for a quantifier.
+        """
+        logger.log.info(f"Getting lines of module_name = {module_name}")
+        # get the module lines
+        module_lines = self._module_to_lines[module_name]
+        # get the indentation level of the code to be inserted
+        indentation_level = self.get_indentation_level_of_stmt(module_lines[line_index])
+        # generate instrument code
+        # TODO: make function the instrument calls a parameter
+        # construct the indentation string
+        indentation = " "*indentation_level
+        # define instrument function
+        instrument_function = "test_package.vypr_config.online_monitor.send_trigger"
+        # check the instrument type
+        logger.log.info(f"Generating instrument code for quantifier with variable = {variable}, based on map_index = {map_index}")
+        code = f"""{indentation}{instrument_function}({map_index}, '{variable}')"""
+        return code
+    
+    def _generate_constraint_instrument_code(self, module_name: str, line_index: int, map_index: int, atom_index: int, subatom_index: int, subatom):
+        """
+        Given all of the necessary information, generate the instrumentation code for a constraint.
         """
         logger.log.info(f"Getting lines of module_name = {module_name}")
         # get the module lines
@@ -239,7 +293,7 @@ class Instrument():
         # define instrument function
         instrument_function = "test_package.vypr_config.online_monitor.send_measurement"
         # check the instrument type
-        logger.log.info(f"Generating instrument code according to subatom = {subatom} with type {type(subatom)}")
+        logger.log.info(f"Generating measurement instrument code according to subatom = {subatom} with type {type(subatom)}")
         if type(subatom) is ValueInConcreteState:
             # construct the instrument code
             code = f"""{indentation}{instrument_function}({map_index}, {atom_index}, {subatom_index}, {subatom.get_program_variable()})"""

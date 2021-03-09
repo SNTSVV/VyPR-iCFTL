@@ -20,6 +20,8 @@ def monitoring_process_function(online_monitor_object):
         if new_measurement["type"] == "stop_signal":
             # set stop signal
             stop_signal_received = True
+        elif new_measurement["type"] == "trigger":
+            print(f"received trigger for map at index {new_measurement['map_index']} and variable {new_measurement['variable']}")
         elif new_measurement["type"] == "measurement":
             print("processing:")
             print(new_measurement)
@@ -61,6 +63,13 @@ class OnlineMonitor():
             "atom_index": atom_index,
             "subatom_index": subatom_index,
             "measurement": measurement
+        })
+    
+    def send_trigger(self, map_index, variable):
+        self.queue.put({
+            "type": "trigger",
+            "map_index": map_index,
+            "variable": variable
         })
     
     def end_monitoring(self):
