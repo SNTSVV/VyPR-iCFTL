@@ -151,35 +151,31 @@ class Instrument():
         list_of_instrument_triples = []
         # traverse self._instrumentation_tree in order to insert instrumentation points for quantifiers
         logger.log.info("Inserting instruments for constraints")
-        for map_index in self._instrumentation_tree:
+        for (map_index, current_map) in enumerate(self._quantifier_instrumentation_points):
             logger.log.info(f"map_index = {map_index}")
-            # insert instrumentation points for quantifiers
-            logger.log.info("Inserting instruments for quantifiers")
-            for (map_index, current_map) in enumerate(self._quantifier_instrumentation_points):
-                logger.log.info(f"map_index = {map_index}")
-                # iterate through the variables of the map
-                for variable in current_map:
-                    # get the symbolic state
-                    symbolic_state = current_map[variable]
-                    # get the index in the block of asts where the instrument's code will be inserted
-                    index_in_block = symbolic_state.get_ast_object().parent_block.index(symbolic_state.get_ast_object())
-                    # get the line number at which to insert the code
-                    line_number = symbolic_state.get_ast_object().parent_block[index_in_block].lineno
-                    # get the index in the list of lines
-                    line_index = line_number - 1
-                    # get the function inside which symbolic_state is found
-                    function = self._analyser.get_scfg_searcher().get_function_name_of_symbolic_state(symbolic_state)
-                    # derive the module name from the function
-                    module = self._get_module_from_function(function)
-                    # generate the code
-                    quantifier_instrument_code = self._generate_quantifier_instrument_code(
-                        module,
-                        line_index,
-                        map_index,
-                        variable
-                    )
-                    # append
-                    list_of_instrument_triples.append((module, line_index, quantifier_instrument_code))
+            # iterate through the variables of the map
+            for variable in current_map:
+                # get the symbolic state
+                symbolic_state = current_map[variable]
+                # get the index in the block of asts where the instrument's code will be inserted
+                index_in_block = symbolic_state.get_ast_object().parent_block.index(symbolic_state.get_ast_object())
+                # get the line number at which to insert the code
+                line_number = symbolic_state.get_ast_object().parent_block[index_in_block].lineno
+                # get the index in the list of lines
+                line_index = line_number - 1
+                # get the function inside which symbolic_state is found
+                function = self._analyser.get_scfg_searcher().get_function_name_of_symbolic_state(symbolic_state)
+                # derive the module name from the function
+                module = self._get_module_from_function(function)
+                # generate the code
+                quantifier_instrument_code = self._generate_quantifier_instrument_code(
+                    module,
+                    line_index,
+                    map_index,
+                    variable
+                )
+                # append
+                list_of_instrument_triples.append((module, line_index, quantifier_instrument_code))
                     
         # traverse self._instrumentation_tree in order to insert instrumentation points for constraints
         logger.log.info("Inserting instruments for constraints")
