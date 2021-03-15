@@ -4,20 +4,24 @@ Module to contain the logic for performing online monitoring of an instrumented 
 
 from multiprocessing import Process, Queue
 import datetime
+import logging
 
 from VyPR.Instrumentation.prepare import prepare_specification
+from VyPR.Monitoring.formula_trees import FormulaTree
 
-def monitoring_process_function(online_monitor_object):
+def monitoring_process_function(online_monitor_object, specification_file):
     """
     Consume measurements from online_monitor_object.queue.
     """
     print("[VyPR] subprocess started")
+    # read in the specification
+    specification = prepare_specification(specification_file)
     # initialise the stop signal to False
     stop_signal_received = False
     # initialise map from map indices to lists of formula trees
     map_index_to_formula_trees = {}
     # get the list of variables from the specification
-    variables = online_monitor_object.specification.get_variables()
+    variables = specification.get_variables()
     # loop until the end signal is received
     while not stop_signal_received:
         # get the event from the front of the queue
@@ -27,19 +31,31 @@ def monitoring_process_function(online_monitor_object):
             # set stop signal
             stop_signal_received = True
         elif new_measurement["type"] == "trigger":
+            print(f"Processing trigger with map_index = {new_measurement['map_index']}, variable = {new_measurement['variable']}")
             # get the index of the variable
             variable_index = variables.index(new_measurement["variable"])
             # get the map index
             map_index = new_measurement["map_index"]
+            # check for an existing list of formula trees with this index
+            if not map_index_to_formula_trees.get(map_index):
+                map_index_to_formula_trees[map_index] = []
             # if variable_index == 0, we generate a new binding/formula tree pair
             # and add map_index_to_formula_trees under the key map_index
             # if variable_index > 0, we look for existing binding/formula tree pairs
             # under the key map_index and extend the ones whose bindings are of length variable_index
 
             if variable_index == 0:
+                # get the current timestamp
+                current_timestamp = datetime.datetime.now()
+                # construct a sequence consisting of a single timestamp
+                current_timestamp_sequence = [current_timestamp]
+                # instantiate the constraint from the specification
+                new_constraint_instance = specification.get_constraint().instantiate()
                 # generate new binding/formula tree pair
-                pass
-            
+                new_formula_tree = FormulaTree(current_timestamp_sequence, new_constraint_instance)
+                print(new_formula_tree)
+                # add to the appropriate list of formula trees
+                map_index_to_formula_trees[map_index].append(new_formula_tree)
             else:
                 # get existing formula trees
                 formula_trees = map_index_to_formula_trees[map_index]
@@ -80,12 +96,10 @@ class OnlineMonitor():
         from a queue.  These measurements are added to the queue by instruments that fire
         during a run of the monitored program.
         """
-        # read in the specification
-        self.specification = prepare_specification(specification_file)
         # set up queue
         self.queue = Queue()
         # set up the separate process
-        self.monitoring_process = Process(target=monitoring_process_function, args=(self,))
+        self.monitoring_process = Process(target=monitoring_process_function, args=(self, specification_file))
         # start the process
         self.monitoring_process.start()
     

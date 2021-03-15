@@ -11,6 +11,8 @@ There can arbitrarily many Forall instances nested.
 
 The final instance in the chain must be a Constraint instance.  This has recursive structure (based on the grammar of iCFTL).
 """
+import logging
+logger = logging.getLogger("VyPR")
 
 from VyPR.Specifications.predicates import changes, calls, future
 from VyPR.Specifications.constraints import (Constraint,
@@ -35,7 +37,6 @@ from VyPR.Specifications.constraints import (Constraint,
                                             NextTransitionFromTransition,
                                             NextConcreteStateFromTransition,
                                             TimeBetweenLessThanConstant)
-import VyPR.Logging.logger as logger
 
 class Specification():
     """
@@ -43,7 +44,7 @@ class Specification():
     """
 
     def __init__(self):
-        logger.log.info("Instantiating new specification...")
+        logger.info("Instantiating new specification...")
         self._quantifier = None
     
     def __repr__(self):
@@ -65,15 +66,15 @@ class Specification():
         because serialisation of a Constraint instance requires calling of this function,
         hence the result would be an infinite loop.
         """
-        logger.log.info("Deriving map variable names -> variable object from quantifiers")
+        logger.info("Deriving map variable names -> variable object from quantifiers")
         # initialise an empty map
         variable_to_obj = {}
         # set the current object to be the top-level specification
         current_obj = self
         # iterate through the structure, using the type Constraint as a place to stop
-        logger.log.info("Traversing specification structure")
+        logger.info("Traversing specification structure")
         while type(current_obj) is not Constraint:
-            logger.log.info(f"current_obj = {type(current_obj)}")
+            logger.info(f"current_obj = {type(current_obj)}")
             # traverse depending on the type of the current object
             if type(current_obj) is Specification:
                 current_obj = current_obj._quantifier
@@ -98,7 +99,7 @@ class Specification():
                     # will stop at the next ieration
                     current_obj = current_obj._constraint
         
-        logger.log.info(f"variable_to_obj = {variable_to_obj}")
+        logger.info(f"variable_to_obj = {variable_to_obj}")
         
         return variable_to_obj
     
@@ -108,15 +109,15 @@ class Specification():
 
         The order of the list matches the order in which the variables occur in quantifiers.
         """
-        logger.log.info("Deriving list of variables from quantifiers")
+        logger.info("Deriving list of variables from quantifiers")
         # initialise an empty list
         variables = []
         # set the current object to be the top-level specification
         current_obj = self
         # iterate through the structure, using the type Constraint as a place to stop
-        logger.log.info("Traversing specification structure")
+        logger.info("Traversing specification structure")
         while type(current_obj) is not Constraint:
-            logger.log.info(f"current_obj = {type(current_obj)}")
+            logger.info(f"current_obj = {type(current_obj)}")
             # traverse depending on the type of the current object
             if type(current_obj) is Specification:
                 current_obj = current_obj._quantifier
@@ -124,14 +125,14 @@ class Specification():
                 # first, add to the map
                 # we check the type of the predicate so we know what kind of variable to instantiate
                 if type(current_obj._predicate) is changes:
-                    variables.append(current_obj._variable))
+                    variables.append(current_obj._variable)
                 elif type(current_obj._predicate) is calls:
-                    variables.append(current_obj._variable))
+                    variables.append(current_obj._variable)
                 elif type(current_obj._predicate) is future:
                     if type(current_obj._predicate._predicate) is changes:
-                        variables.append(current_obj._variable))
+                        variables.append(current_obj._variable)
                     elif type(current_obj._predicate._predicate) is calls:
-                        variables.append(current_obj._variable))
+                        variables.append(current_obj._variable)
                 # in the case of a quantifier, the two possibilities are
                 # that the next item to consider is a quantifier or a constraint
                 if current_obj._quantifier:
@@ -173,7 +174,7 @@ class Specification():
                 else:
                     stack.append(top.get_constraint())
             elif type(top) is Constraint:
-                stack.append(top.get_constraint())
+                stack.append(top.instantiate())
             elif type(top) is Conjunction:
                 stack += top.get_conjuncts()
             elif type(top) is Disjunction:
@@ -238,7 +239,7 @@ class Specification():
         if not predicate._during_function:
             raise Exception(f"Predicate used for variable {variable} not complete")
 
-        logger.log.info(f"Adding quantifier with arguments {quantified_variable}")
+        logger.info(f"Adding quantifier with arguments {quantified_variable}")
 
         # store the quantifier
         self._quantifier = Forall(self, **quantified_variable)
@@ -302,7 +303,7 @@ class Forall():
         if not predicate._predicate._during_function:
             raise Exception(f"Predicate used for variable {variable} not complete")
 
-        logger.log.info(f"Initialising new instance of Forall with quantified_variable = {quantified_variable}")
+        logger.info(f"Initialising new instance of Forall with quantified_variable = {quantified_variable}")
 
         # store the quantifier
         self._quantifier = Forall(self._specification_obj, **quantified_variable)
@@ -319,7 +320,7 @@ class Forall():
         if type(expression) is not type(lambda:0):
             raise Exception("Constraint given must be a lambda expression.")
 
-        logger.log.info("Setting self._constraint to new Constraint instance")
+        logger.info("Setting self._constraint to new Constraint instance")
 
         self._constraint = Constraint(self._specification_obj, expression)
 

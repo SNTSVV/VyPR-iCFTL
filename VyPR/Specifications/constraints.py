@@ -133,7 +133,7 @@ class Constraint():
         self._constraint = constraint
     
     def __repr__(self):
-        executed_lambda = self.instantiate_constraint()
+        executed_lambda = self.instantiate()
         if ConstraintBase not in type(executed_lambda).__bases__:
             # TODO: indicate which part of the constraint is not complete
             logger.log.info("Constraint given in specification is not complete:")
@@ -141,7 +141,7 @@ class Constraint():
             raise Exception("Constraint given in specification is not complete.")
         return str(executed_lambda)
     
-    def instantiate_constraint(self):
+    def instantiate(self):
         """
         Determine the set of variables from quantifiers and instantiate the quantifier-free
         part of the specification.
@@ -149,9 +149,6 @@ class Constraint():
         arguments = self._specification_obj.get_variable_to_obj_map()
         executed_lambda = self._constraint(**arguments)
         return executed_lambda
-    
-    def get_constraint(self):
-        return self.instantiate_constraint()
     
     def get_atomic_constraints(self):
         """
@@ -167,7 +164,7 @@ class Constraint():
             top = stack.pop()
             # based on the type, add child elements to the stack
             if type(top) is Constraint:
-                stack.append(top.get_constraint())
+                stack.append(top.instantiate())
             elif type(top) is Conjunction:
                 stack += top.get_conjuncts()
             elif type(top) is Disjunction:
@@ -665,5 +662,5 @@ class TimeBetweenLessThanConstant(ConstraintBase, MixedAtom):
         # get the time between object
         expressions = self.get_time_between_expression()
         # construct a list of the lhs and rhs of the time between operator
-        expressions = [expressions.get_lhs_expression(), expression.get_rhs_expression()]
+        expressions = [expressions.get_lhs_expression(), expressions.get_rhs_expression()]
         return expressions[index]
