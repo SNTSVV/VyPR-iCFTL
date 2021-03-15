@@ -102,6 +102,47 @@ class Specification():
         
         return variable_to_obj
     
+    def get_variables(self) -> list:
+        """
+        Traverse the specification in order to construct a list of variables.
+
+        The order of the list matches the order in which the variables occur in quantifiers.
+        """
+        logger.log.info("Deriving list of variables from quantifiers")
+        # initialise an empty list
+        variables = []
+        # set the current object to be the top-level specification
+        current_obj = self
+        # iterate through the structure, using the type Constraint as a place to stop
+        logger.log.info("Traversing specification structure")
+        while type(current_obj) is not Constraint:
+            logger.log.info(f"current_obj = {type(current_obj)}")
+            # traverse depending on the type of the current object
+            if type(current_obj) is Specification:
+                current_obj = current_obj._quantifier
+            elif type(current_obj) is Forall:
+                # first, add to the map
+                # we check the type of the predicate so we know what kind of variable to instantiate
+                if type(current_obj._predicate) is changes:
+                    variables.append(current_obj._variable))
+                elif type(current_obj._predicate) is calls:
+                    variables.append(current_obj._variable))
+                elif type(current_obj._predicate) is future:
+                    if type(current_obj._predicate._predicate) is changes:
+                        variables.append(current_obj._variable))
+                    elif type(current_obj._predicate._predicate) is calls:
+                        variables.append(current_obj._variable))
+                # in the case of a quantifier, the two possibilities are
+                # that the next item to consider is a quantifier or a constraint
+                if current_obj._quantifier:
+                    current_obj = current_obj._quantifier
+                else:
+                    # if we arrive at a constraint, the loop
+                    # will stop at the next ieration
+                    current_obj = current_obj._constraint
+        
+        return variables
+    
     def get_function_names_used(self):
         """
         Traverse the specification and, each time a predicate is encountered, extract the function

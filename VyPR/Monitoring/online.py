@@ -5,6 +5,8 @@ Module to contain the logic for performing online monitoring of an instrumented 
 from multiprocessing import Process, Queue
 import datetime
 
+from VyPR.Instrumentation.prepare import prepare_specification
+
 def monitoring_process_function(online_monitor_object):
     """
     Consume measurements from online_monitor_object.queue.
@@ -12,6 +14,10 @@ def monitoring_process_function(online_monitor_object):
     print("[VyPR] subprocess started")
     # initialise the stop signal to False
     stop_signal_received = False
+    # initialise map from map indices to lists of formula trees
+    map_index_to_formula_trees = {}
+    # get the list of variables from the specification
+    variables = online_monitor_object.specification.get_variables()
     # loop until the end signal is received
     while not stop_signal_received:
         # get the event from the front of the queue
@@ -21,10 +27,39 @@ def monitoring_process_function(online_monitor_object):
             # set stop signal
             stop_signal_received = True
         elif new_measurement["type"] == "trigger":
-            print(f"received trigger for map at index {new_measurement['map_index']} and variable {new_measurement['variable']}")
+            # get the index of the variable
+            variable_index = variables.index(new_measurement["variable"])
+            # get the map index
+            map_index = new_measurement["map_index"]
+            # if variable_index == 0, we generate a new binding/formula tree pair
+            # and add map_index_to_formula_trees under the key map_index
+            # if variable_index > 0, we look for existing binding/formula tree pairs
+            # under the key map_index and extend the ones whose bindings are of length variable_index
+
+            if variable_index == 0:
+                # generate new binding/formula tree pair
+                pass
+            
+            else:
+                # get existing formula trees
+                formula_trees = map_index_to_formula_trees[map_index]
+                # iterate through the formula trees
+                for formula_tree in formula_trees:
+                    # decide whether we need to extend the binding attached to the formula tree
+                    pass
+
         elif new_measurement["type"] == "measurement":
             print("processing:")
             print(new_measurement)
+            # get the list of formula trees in map_index_to_formula_trees under the key map_index
+            # and attempt to update each one with the measurement
+            # Note: a formula tree can only be updated with respect to a measurement once - if the update is attempted
+            # again, the formula tree will refuse the update
+
+            # get all relevant formula trees
+            formula_trees = map_index_to_formula_trees[map_index]
+
+            # attempt to update each formula tree with the measurement received
     
     print("[VyPR] subprocess ending")
         
@@ -45,6 +80,8 @@ class OnlineMonitor():
         from a queue.  These measurements are added to the queue by instruments that fire
         during a run of the monitored program.
         """
+        # read in the specification
+        self.specification = prepare_specification(specification_file)
         # set up queue
         self.queue = Queue()
         # set up the separate process
