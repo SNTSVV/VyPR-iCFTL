@@ -36,6 +36,8 @@ def monitoring_process_function(online_monitor_object, specification_file):
             logging.info("Received stop signal - setting stop flag")
             stop_signal_received = True
         elif new_measurement["type"] == "trigger":
+            # get timestamp for this trigger
+            trigger_timestamp = datetime.datetime.now()
             # get the index of the variable
             variable_index = variables.index(new_measurement["variable"])
             # get the map index
@@ -54,11 +56,9 @@ def monitoring_process_function(online_monitor_object, specification_file):
 
             # check the variable index
             if variable_index == 0:
-                # get the current timestamp
-                current_timestamp = datetime.datetime.now()
-                logging.info(f"Instantiating new formula tree with timestamp {current_timestamp}")
+                logging.info(f"Instantiating new formula tree with timestamp {trigger_timestamp}")
                 # construct a sequence consisting of a single timestamp
-                current_timestamp_sequence = [current_timestamp]
+                current_timestamp_sequence = [trigger_timestamp]
                 # generate new binding/formula tree pair
                 new_formula_tree = FormulaTree(current_timestamp_sequence, constraint, variables)
                 # add to the appropriate list of formula trees
@@ -77,7 +77,7 @@ def monitoring_process_function(online_monitor_object, specification_file):
                     # check whether the length of the timestamp sequence is equal to variable_index
                     if len(timestamps) == variable_index:
                         # generate an extended timestamp sequence
-                        extended_timestamp_sequence = [t for t in timestamps] + [datetime.datetime.now()]
+                        extended_timestamp_sequence = [t for t in timestamps] + [trigger_timestamp]
                         # get the assignment of atoms/expressions to measurements from formula_tree
                         measurements = formula_tree.get_measurements_for_variable_index(variable_index)
                         # instantiate new formula tree with the extended timestamp sequence, and the measurements
