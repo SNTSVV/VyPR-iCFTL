@@ -17,6 +17,11 @@ class changes(predicate):
     def __repr__(self):
         return f"changes({self._program_variable}).during({self._during_function})"
     
+    def __eq__(self, other):
+        return (type(self) is type(other)
+                and self._program_variable == other._program_variable
+                and self._during_function == other._during_function)
+    
     def during(self, function_name):
         self._during_function = function_name
         return self
@@ -38,6 +43,11 @@ class calls(predicate):
     
     def __repr__(self):
         return f"calls({self._function_name}).during({self._during_function})"
+    
+    def __eq__(self, other):
+        return (type(self) is type(other)
+                and self._function_name == other._function_name
+                and self._during_function == other._during_function)
     
     def during(self, function_name):
         self._during_function = function_name

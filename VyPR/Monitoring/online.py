@@ -31,7 +31,6 @@ def monitoring_process_function(online_monitor_object, specification_file):
             # set stop signal
             stop_signal_received = True
         elif new_measurement["type"] == "trigger":
-            print(f"Processing trigger with map_index = {new_measurement['map_index']}, variable = {new_measurement['variable']}")
             # get the index of the variable
             variable_index = variables.index(new_measurement["variable"])
             # get the map index
@@ -49,11 +48,10 @@ def monitoring_process_function(online_monitor_object, specification_file):
                 current_timestamp = datetime.datetime.now()
                 # construct a sequence consisting of a single timestamp
                 current_timestamp_sequence = [current_timestamp]
-                # instantiate the constraint from the specification
-                new_constraint_instance = specification.get_constraint().instantiate()
+                # get the constraint held by the specification
+                constraint = specification.get_constraint()
                 # generate new binding/formula tree pair
-                new_formula_tree = FormulaTree(current_timestamp_sequence, new_constraint_instance)
-                print(new_formula_tree)
+                new_formula_tree = FormulaTree(current_timestamp_sequence, constraint)
                 # add to the appropriate list of formula trees
                 map_index_to_formula_trees[map_index].append(new_formula_tree)
             else:
@@ -65,8 +63,11 @@ def monitoring_process_function(online_monitor_object, specification_file):
                     pass
 
         elif new_measurement["type"] == "measurement":
-            print("processing:")
-            print(new_measurement)
+            # extract relevant values
+            measurement = new_measurement["measurement"]
+            map_index = new_measurement["map_index"]
+            atom_index = new_measurement["atom_index"]
+            subatom_index = new_measurement["subatom_index"]
             # get the list of formula trees in map_index_to_formula_trees under the key map_index
             # and attempt to update each one with the measurement
             # Note: a formula tree can only be updated with respect to a measurement once - if the update is attempted
@@ -76,8 +77,18 @@ def monitoring_process_function(online_monitor_object, specification_file):
             formula_trees = map_index_to_formula_trees[map_index]
 
             # attempt to update each formula tree with the measurement received
+            for (index, formula_tree) in enumerate(formula_trees):
+                # update the formula tree
+                updated_formula_tree = formula_tree.update_with_measurement(measurement, atom_index, subatom_index)
     
     print("[VyPR] subprocess ending")
+
+    print("Verdicts:")
+
+    # print verdicts
+    for map_index in map_index_to_formula_trees:
+        for formula_tree in map_index_to_formula_trees[map_index]:
+            print(f"{formula_tree.get_timestamps()} -> {formula_tree.get_configuration()}")
         
 
 class OnlineMonitor():

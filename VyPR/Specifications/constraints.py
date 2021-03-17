@@ -213,7 +213,8 @@ class Conjunction(ConstraintBase):
         for conjunct in conjuncts:
             if not is_complete(conjunct):
                 raise Exception(f"Conjunct {conjunct} is not complete")
-        self._conjuncts = conjuncts
+        # we cast to a list so that conjuncts can be replaced during formula tree updates
+        self._conjuncts = list(conjuncts)
     
     def __repr__(self):
         serialised_conjuncts = map(str, self._conjuncts)
@@ -232,7 +233,8 @@ class Disjunction(ConstraintBase):
         for disjunct in disjuncts:
             if not is_complete(disjunct):
                 raise Exception(f"Disjunct {disjunct} is not complete")
-        self._disjuncts = disjuncts
+        # we cast to a list so that conjuncts can be replaced during formula tree updates
+        self._disjuncts = list(disjuncts)
     
     def __repr__(self):
         serialised_disjuncts = map(str, self._disjuncts)
@@ -252,13 +254,13 @@ class Negation(ConstraintBase):
         # check that operand is complete
         if not is_complete(operand):
             raise Exception(f"Operand {operand} for negation is not complete")
-        self._operand = operand
+        self.operand = operand
     
     def __repr__(self):
-        return f"not( {self._operand} )"
+        return f"not( {self.operand} )"
     
     def get_operand(self):
-        return self._operand
+        return self.operand
 
 """
 Types of expressions.
@@ -327,6 +329,10 @@ class ConcreteStateVariable(ConcreteStateExpression):
     def __repr__(self):
         return self._name
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._name == other._name)
+    
     def get_name(self) -> str:
         return self._name
 
@@ -340,6 +346,10 @@ class TransitionVariable(TransitionExpression):
     
     def __repr__(self):
         return self._name
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._name == other._name)
     
     def get_name(self) -> str:
         return self._name
@@ -359,6 +369,11 @@ class ValueInConcreteState():
     
     def __repr__(self):
         return f"{self._concrete_state_expression}({self._program_variable_name})"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._concrete_state_expression == other._concrete_state_expression
+                and self._program_variable_name == other._program_variable_name)
     
     def get_concrete_state_expression(self):
         return self._concrete_state_expression
@@ -395,6 +410,11 @@ class ValueInConcreteStateEqualsConstant(ConstraintBase, NormalAtom):
     def __repr__(self):
         return f"{self._value_expression}.equals({self._constant})"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._constant == other._constant)
+    
     def get_value_expression(self):
         return self._value_expression
     
@@ -415,11 +435,22 @@ class ValueInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):
     def __repr__(self):
         return f"{self._value_expression} < {self._constant}"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._constant == other._constant)
+    
     def get_value_expression(self):
         return self._value_expression
     
     def get_expression(self, index):
         return self.get_value_expression()
+    
+    def check(self, measurement, subatom_index):
+        """
+        Given a measurement, check to see whether the constraint expressed by this atom is satisfied.
+        """
+        return measurement < self._constant
 
 class ValueInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
     """
@@ -433,6 +464,11 @@ class ValueInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
     
     def __repr__(self):
         return f"{self._value_expression} > {self._constant}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._constant == other._constant)
     
     def get_value_expression(self):
         return self._value_expression
@@ -455,6 +491,10 @@ class DurationOfTransition():
     def __repr__(self):
         return f"{self._transition_expression}.duration()"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_expression == other._transition_expression)
+    
     def get_transition_expression(self):
         return self._transition_expression
     
@@ -475,6 +515,10 @@ class ConcreteStateBeforeTransition(ConcreteStateExpression):
     def __repr__(self):
         return f"{self._transition_expression}.before()"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_expression == other._transition_expression)
+    
     def get_transition_expression(self):
         return self._transition_expression
 
@@ -488,6 +532,10 @@ class ConcreteStateAfterTransition(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.after()"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_expression == other._transition_expression)
     
     def get_transition_expression(self):
         return self._transition_expression
@@ -508,11 +556,19 @@ class DurationOfTransitionLessThanConstant(ConstraintBase, NormalAtom):
     def __repr__(self):
         return f"{self._transition_duration} < {self._constant}"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_duration == other._transition_duration
+                and self._constant == other._constant)
+    
     def get_transition_duration_obj(self):
         return self._transition_duration
     
     def get_expression(self, index):
         return self.get_transition_duration_obj()
+    
+    def check(self, measurement, subatom_index):
+        return measurement < self._constant
 
 class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
     """
@@ -525,6 +581,11 @@ class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
     
     def __repr__(self):
         return f"{self._transition_duration} > {self._constant}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_duration == other._transition_duration
+                and self._constant == other._constant)
     
     def get_transition_duration_obj(self):
         return self._transition_duration
@@ -549,6 +610,11 @@ class NextTransitionFromConcreteState(TransitionExpression):
     def __repr__(self):
         return f"{self._concrete_state_expression}.next({self._predicate})"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._concrete_state_expression == other._concrete_state_expression
+                and self._predicate == other._predicate)
+    
     def get_concrete_state_expression(self):
         return self._concrete_state_expression
     
@@ -569,6 +635,11 @@ class NextConcreteStateFromConcreteState(ConcreteStateExpression):
     def __repr__(self):
         return f"{self._concrete_state_expression}.next({self._predicate})"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._concrete_state_expression == other._concrete_state_expression
+                and self._predicate == other._predicate)
+    
     def get_concrete_state_expression(self):
         return self._concrete_state_expression
     
@@ -587,6 +658,11 @@ class NextTransitionFromTransition(TransitionExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.next({self._predicate})"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_expression == other._transition_expression
+                and self._predicate == other._predicate)
     
     def get_transition_expression(self):
         return self._transition_expression
@@ -607,6 +683,11 @@ class NextConcreteStateFromTransition(ConcreteStateExpression):
     
     def __repr__(self):
         return f"{self._transition_expression}.next({self._predicate})"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_expression == other._transition_expression
+                and self._predicate == other._predicate)
     
     def get_transition_expression(self):
         return self._transition_expression
@@ -633,6 +714,11 @@ class TimeBetween():
     def __repr__(self):
         return f"timeBetween({self._concrete_state_expression_1}, {self._concrete_state_expression_2})"
     
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._concrete_state_expression_1 == other._concrete_state_expression_1
+                and self._concrete_state_expression_2 == other._concrete_state_expression_2)
+    
     def __lt__(self, other):
         if type(other) in [int, float]:
             return TimeBetweenLessThanConstant(self, other)
@@ -654,6 +740,11 @@ class TimeBetweenLessThanConstant(ConstraintBase, MixedAtom):
     
     def __repr__(self):
         return f"{self._time_between_expression} < {self._constant}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._time_between_expression == other._time_between_expression
+                and self._constant == other._constant)
     
     def get_time_between_expression(self):
         return self._time_between_expression
