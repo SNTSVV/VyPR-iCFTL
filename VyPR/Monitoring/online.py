@@ -13,6 +13,11 @@ def monitoring_process_function(online_monitor_object, specification_file):
     """
     Consume measurements from online_monitor_object.queue.
     """
+    # configure logging (inspired by stackoverflow for now)
+    FORMAT = '%(asctime)-15s %(message)s'
+    logging.basicConfig(format=FORMAT, filename=f"logs/monitoring/{datetime.datetime.now()}", filemode="a", level=logging.DEBUG)
+
+    logging.info("Starting VyPR monitoring process.")
     # read in the specification
     specification = prepare_specification(specification_file)
     # initialise the stop signal to False
@@ -28,12 +33,14 @@ def monitoring_process_function(online_monitor_object, specification_file):
         # check type of measurement
         if new_measurement["type"] == "stop_signal":
             # set stop signal
+            logging.info("Received stop signal - setting stop flag")
             stop_signal_received = True
         elif new_measurement["type"] == "trigger":
             # get the index of the variable
             variable_index = variables.index(new_measurement["variable"])
             # get the map index
             map_index = new_measurement["map_index"]
+            logging.info(f"Received trigger instrument with variable_index = {variable_index}, map_index = {map_index}")
             # check for an existing list of formula trees with this index
             if not map_index_to_formula_trees.get(map_index):
                 map_index_to_formula_trees[map_index] = []
@@ -42,24 +49,43 @@ def monitoring_process_function(online_monitor_object, specification_file):
             # if variable_index > 0, we look for existing binding/formula tree pairs
             # under the key map_index and extend the ones whose bindings are of length variable_index
 
+            # get the constraint held by the specification
+            constraint = specification.get_constraint()
+
+            # check the variable index
             if variable_index == 0:
                 # get the current timestamp
                 current_timestamp = datetime.datetime.now()
+                logging.info(f"Instantiating new formula tree with timestamp {current_timestamp}")
                 # construct a sequence consisting of a single timestamp
                 current_timestamp_sequence = [current_timestamp]
-                # get the constraint held by the specification
-                constraint = specification.get_constraint()
                 # generate new binding/formula tree pair
-                new_formula_tree = FormulaTree(current_timestamp_sequence, constraint)
+                new_formula_tree = FormulaTree(current_timestamp_sequence, constraint, variables)
                 # add to the appropriate list of formula trees
                 map_index_to_formula_trees[map_index].append(new_formula_tree)
             else:
+                print("processing", variable_index)
+                logging.info(f"Instantiating formula tree using existing ones")
                 # get existing formula trees
                 formula_trees = map_index_to_formula_trees[map_index]
                 # iterate through the formula trees
                 for formula_tree in formula_trees:
                     # decide whether we need to extend the binding attached to the formula tree
-                    pass
+                    logging.info(f"Inspecting formula tree {formula_tree}")
+                    # get the timestamp sequence from the formula tree
+                    timestamps = formula_tree.get_timestamps()
+                    # check whether the length of the timestamp sequence is equal to variable_index
+                    if len(timestamps) == variable_index:
+                        # generate an extended timestamp sequence
+                        extended_timestamp_sequence = [t for t in timestamps] + [datetime.datetime.now()]
+                        # get the assignment of atoms/expressions to measurements from formula_tree
+                        measurements = formula_tree.get_measurements_for_variable_index(variable_index)
+                        # get the
+                        # instantiate new formula tree with the extended timestamp sequence, and the measurements
+                        # associated with variables from the old formula tree
+                        extended_formula_tree = FormulaTree(extended_timestamp_sequence, constraint, variables, measurements)
+                        # store the new formula tree
+                        map_index_to_formula_trees[map_index].append(extended_formula_tree)
 
         elif new_measurement["type"] == "measurement":
             # extract relevant values
@@ -67,6 +93,7 @@ def monitoring_process_function(online_monitor_object, specification_file):
             map_index = new_measurement["map_index"]
             atom_index = new_measurement["atom_index"]
             subatom_index = new_measurement["subatom_index"]
+            logging.info(f"Received measurment instrument with measurement = {measurement}, map_index = {map_index}, atom_index = {atom_index}, subatom_index = {subatom_index}")
             # get the list of formula trees in map_index_to_formula_trees under the key map_index
             # and attempt to update each one with the measurement
             # Note: a formula tree can only be updated with respect to a measurement once - if the update is attempted
@@ -78,10 +105,13 @@ def monitoring_process_function(online_monitor_object, specification_file):
             # attempt to update each formula tree with the measurement received
             for (index, formula_tree) in enumerate(formula_trees):
                 # update the formula tree
+                logging.info(f"Updating formula tree {formula_tree} with measurement = {measurement}")
                 updated_formula_tree = formula_tree.update_with_measurement(measurement, atom_index, subatom_index)
     
     # register verdicts
     online_monitor_object.verdict_queue.put(map_index_to_formula_trees)
+
+    logging.info("Ending VyPR monitoring process.")
 
 class OnlineMonitor():
     """

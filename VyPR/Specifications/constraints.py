@@ -114,7 +114,7 @@ def _derive_sequence_of_temporal_operators(obj) -> list:
     
     return temporal_operator_sequence
 
-def get_base_variable(self, obj) -> list:
+def get_base_variable(obj) -> list:
     """
     Get the temporal operator sequence of obj and return the last element (the base variable)
 
