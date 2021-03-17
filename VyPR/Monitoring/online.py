@@ -13,7 +13,6 @@ def monitoring_process_function(online_monitor_object, specification_file):
     """
     Consume measurements from online_monitor_object.queue.
     """
-    print("[VyPR] subprocess started")
     # read in the specification
     specification = prepare_specification(specification_file)
     # initialise the stop signal to False
@@ -81,15 +80,8 @@ def monitoring_process_function(online_monitor_object, specification_file):
                 # update the formula tree
                 updated_formula_tree = formula_tree.update_with_measurement(measurement, atom_index, subatom_index)
     
-    print("[VyPR] subprocess ending")
-
-    print("Verdicts:")
-
-    # print verdicts
-    for map_index in map_index_to_formula_trees:
-        for formula_tree in map_index_to_formula_trees[map_index]:
-            print(f"{formula_tree.get_timestamps()} -> {formula_tree.get_configuration()}")
-        
+    # register verdicts
+    online_monitor_object.verdict_queue.put(map_index_to_formula_trees)
 
 class OnlineMonitor():
     """
@@ -107,8 +99,12 @@ class OnlineMonitor():
         from a queue.  These measurements are added to the queue by instruments that fire
         during a run of the monitored program.
         """
-        # set up queue
+        # set up verdict dictionary ready for the monitoring algorithm to send verdicts
+        self._map_index_to_formula_trees = {}
+        # set up queue for subprocess to read from
         self.queue = Queue()
+        # set up queue for subprocess to write verdicts to
+        self.verdict_queue = Queue()
         # set up the separate process
         self.monitoring_process = Process(target=monitoring_process_function, args=(self, specification_file))
         # start the process
@@ -134,8 +130,16 @@ class OnlineMonitor():
             "variable": variable
         })
     
+    def register_verdicts(self):
+        self._map_index_to_formula_trees = self.verdict_queue.get()
+    
+    def get_verdicts(self):
+        return self._map_index_to_formula_trees
+    
     def end_monitoring(self):
         # send signal
         self.queue.put({"type": "stop_signal"})
         # join the process
         self.monitoring_process.join()
+        # register verdicts
+        self.register_verdicts()
