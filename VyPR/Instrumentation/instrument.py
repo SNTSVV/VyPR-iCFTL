@@ -75,6 +75,8 @@ class Instrument():
             # get scfg for this function based on self._filename_to_ast_list[filename]
             self._function_name_to_scfg_map[function] = \
                 construct_scfg_of_function(module, self._module_to_ast_list[module], function)
+            # write to file
+            self._function_name_to_scfg_map[function].write_to_file(f"{function}.gv")
         
         # initialise the analyser class
         logger.log.info("Calling self._analyser.initialise")
@@ -116,6 +118,8 @@ class Instrument():
         """
         Given a module, get its filename, read in the code from it and construct the ASTs.
         """
+        # translate module to have / instead of .
+        module = module.replace(".", "/")
         # get filename
         filename = os.path.join(self._root_directory, f"{module}.py")
         # construct file handle
@@ -129,6 +133,8 @@ class Instrument():
         """
         Given a module, gets its filename and read in the code lines from it.
         """
+        # translate module to have / instead of .
+        module = module.replace(".", "/")
         # get filename
         filename = os.path.join(self._root_directory, f"{module}.py")
         # construct file handle
@@ -230,8 +236,8 @@ class Instrument():
             self._module_to_lines[module_name].insert(triple[1], triple[2])
         
         # now, insert additional imports
-        trace_writing_function = """import datetime"""
-        lines = trace_writing_function.split("\n")
+        imports = """import datetime"""
+        lines = imports.split("\n")
         # for each module, insert these lines at the beginning
         for module_name in self._module_to_lines:
             # insert lines (reversed, since each time we insert at the beginning)
@@ -267,7 +273,7 @@ class Instrument():
         # construct the indentation string
         indentation = " "*indentation_level
         # define instrument function
-        instrument_function = "test_package.vypr_config.online_monitor.send_trigger"
+        instrument_function = "g.vypr.send_trigger"
         # check the instrument type
         logger.log.info(f"Generating instrument code for quantifier with variable = {variable}, based on map_index = {map_index}")
         code = f"""{indentation}{instrument_function}({map_index}, '{variable}')"""
@@ -287,7 +293,7 @@ class Instrument():
         # construct the indentation string
         indentation = " "*indentation_level
         # define instrument function
-        instrument_function = "test_package.vypr_config.online_monitor.send_measurement"
+        instrument_function = "g.vypr.send_measurement"
         # check the instrument type
         logger.log.info(f"Generating measurement instrument code according to subatom = {subatom} with type {type(subatom)}")
         if type(subatom) is ValueInConcreteState:
