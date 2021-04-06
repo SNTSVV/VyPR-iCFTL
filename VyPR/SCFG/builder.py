@@ -491,8 +491,7 @@ class SCFG():
         function_names = []
         # walk the ast and extract function names
         for walked_ast in ast.walk(subast):
-            if type(walked_ast) is ast.Expr:
-                if type(walked_ast.value) is ast.Call:
-                    if type(walked_ast.value.func) is ast.Name:
-                        function_names.append(walked_ast.value.func.id)
+            if type(walked_ast) is ast.Call:
+                if type(walked_ast.func) is ast.Name:
+                    function_names.append(walked_ast.func.id)
         return function_names
