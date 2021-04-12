@@ -128,6 +128,21 @@ class WhileLoopExitSymbolicState(ControlFlowSymbolicState):
     def __init__(self):
         super().__init__()
 
+class TryEntrySymbolicState(ControlFlowSymbolicState):
+    """
+    A symbolic state class to be used as the entry symbolic state for try-excepts.
+    """
+    def __init__(self, ast_obj):
+        super().__init__()
+        self._ast_obj = ast_obj
+
+class TryExitSymbolicState(ControlFlowSymbolicState):
+    """
+    A symbolic state class to be used as the exit symbolic state for try-excepts.
+    """
+    def __init__(self):
+        super().__init__()
+
 class SCFG():
 
     def __init__(self, program_asts: list):
@@ -319,6 +334,39 @@ class SCFG():
                     logger.log.info(f"No orelse block was found - adding {exit_symbolic_state} as child of {entry_symbolic_state}")
                     # there is no orelse block
                     entry_symbolic_state.add_child(exit_symbolic_state)
+                
+                # update the previous symbolic state for the next iteration
+                previous_symbolic_state = exit_symbolic_state
+            
+            elif type(subprogram_ast) is ast.Try:
+                logger.log.info(f"Type of sub_program_ast = {subprogram_ast} is ast.Try")
+
+                # deal with the main body and the handlers
+
+                # instantiate symbolic states for entry and exist
+                logger.log.info(f"Setting up try-except entry and exit symbolic states")
+                entry_symbolic_state: TryEntrySymbolicState = TryEntrySymbolicState(subprogram_ast)
+                exit_symbolic_state: TryExitSymbolicState = TryExitSymbolicState()
+                self._symbolic_states += [entry_symbolic_state, exit_symbolic_state]
+                logger.log.info(f"Entry state is entry_symbolic_state = {entry_symbolic_state} and exit state is exit_symbolic_state = {exit_symbolic_state}")
+                # set the entry symbolic state as a child of the previous
+                logger.log.info(f"Adding entry_symbolic_state = {entry_symbolic_state} as a child of {previous_symbolic_state}")
+                previous_symbolic_state.add_child(entry_symbolic_state)
+
+                # recurse on the main body
+                logger.log.info(f"Recursing on body of try-except with self._subprogram_to_scfg, linking to parent entry_symbolic_state = {entry_symbolic_state}")
+                final_body_symbolic_state = self.subprogram_to_scfg(subprogram_ast.body, entry_symbolic_state)
+                # set the exit symbolic state as a child of the final one from the body
+                logger.log.info(f"Setting {exit_symbolic_state} as child of final_body_symbolic_state = {final_body_symbolic_state}")
+                final_body_symbolic_state.add_child(exit_symbolic_state)
+
+                # recurse on each handler
+                for handler in subprogram_ast.handlers:
+                    logger.log.info(f"Recursing on handler of try-except with self._subprogram_to_scfg, linking to parent entry_symbolic_state = {entry_symbolic_state}")
+                    final_body_symbolic_state = self.subprogram_to_scfg(handler.body, entry_symbolic_state)
+                    # set the exist symbolic state as a child of the final one from the body
+                    logger.log.info(f"Setting {exit_symbolic_state} as child of final_body_symbolic_state = {final_body_symbolic_state}")
+                    final_body_symbolic_state.add_child(exit_symbolic_state)
                 
                 # update the previous symbolic state for the next iteration
                 previous_symbolic_state = exit_symbolic_state
