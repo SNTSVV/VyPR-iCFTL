@@ -300,12 +300,6 @@ class Instrument():
             # construct the instrument code
             code = f"""{indentation}{instrument_function}({map_index}, {atom_index}, {subatom_index}, {subatom.get_program_variable()})"""
             code = [(module_name, line_index+1, code)]
-        elif type(subatom) is TimeBetween:
-            # construct measurement code
-            measurement_code = f"ts_{subatom_index} = datetime.datetime.now().isoformat()"
-            # construct the instrument code
-            code = f"""{indentation}{measurement_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
-            code = [(module_name, line_index, code)]
         elif type(subatom) is DurationOfTransition:
             # construct measurement code
             measurement_start_code = "ts_start = datetime.datetime.now()"
@@ -319,6 +313,18 @@ class Instrument():
             code_part_3 = \
                 f"""{indentation}{measurement_difference_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, duration)"""
             code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
+        elif type(subatom) is ConcreteStateBeforeTransition:
+            # construct measurement code
+            measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
+            # construct the instrument code
+            instrument_code = f"""{indentation}{measurement_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
+            code = [(module_name, line_index, instrument_code)]
+        elif type(subatom) is ConcreteStateAfterTransition:
+            # construct measurement code
+            measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
+            # construct the instrument code
+            instrument_code = f"""{indentation}{measurement_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
+            code = [(module_name, line_index+1, instrument_code)]
         
         return code
     

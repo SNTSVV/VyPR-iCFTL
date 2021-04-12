@@ -2,8 +2,14 @@
 Module that holds all logic regarding binding/formula tree pairs derived while monitoring for an iCFTL specification.
 """
 import logging
+import datetime
 
 from VyPR.Specifications.constraints import is_normal_atom, is_mixed_atom, get_base_variable, Conjunction, Disjunction, Negation
+
+def milliseconds(dt):
+    # thanks to https://stackoverflow.com/questions/6999726/how-can-i-convert-a-datetime-object-to-milliseconds-since-epoch-unix-time-in-p - 2021-04-12
+    epoch = datetime.datetime.utcfromtimestamp(0)
+    return (dt - epoch).total_seconds() * 1000.0
 
 class FormulaTree():
     """
@@ -15,7 +21,7 @@ class FormulaTree():
     corresponding to when the concrete state/transition for each variable was observed at runtime.
     """
 
-    def __init__(self, timestamps: list, constraint, variables: list, measurement_dictionary: dict = {}):
+    def __init__(self, timestamps: list, constraint, variables: list, measurement_dictionary = None):
         """
         Store the list of timestamps that form the binding for this formula tree.
         
@@ -27,6 +33,7 @@ class FormulaTree():
             {atom index : {subatom index : measurement}}
         """
         logging.info("Instantiating new formula tree")
+        logging.info(str(measurement_dictionary))
         self._timestamps = timestamps
         self._formula_tree = constraint.instantiate()
         self._atoms = constraint.get_atomic_constraints()
@@ -38,12 +45,15 @@ class FormulaTree():
         logging.info("  self._variables = %s" % str(self._variables))
         logging.info("  self._measurement_dictionary = %s" % str(self._measurement_dictionary))
 
-        # run the formula tree update with respect to the measurement dictionary already given
-        logging.info("Updating the formula tree with respect to measurement_dictionary")
-        for atom_index in self._measurement_dictionary:
-            for subatom_index in self._measurement_dictionary[atom_index]:
-                measurement = self._measurement_dictionary[atom_index][subatom_index]
-                self.update_with_measurement(measurement, atom_index, subatom_index)
+        # run the formula tree update with respect to the measurement dictionary, if given
+        if self._measurement_dictionary:
+            logging.info("Updating the formula tree with respect to measurement_dictionary")
+            for atom_index in self._measurement_dictionary:
+                for subatom_index in self._measurement_dictionary[atom_index]:
+                    measurement = self._measurement_dictionary[atom_index][subatom_index]
+                    self.update_with_measurement(measurement, atom_index, subatom_index)
+        else:
+            self._measurement_dictionary = {}
     
     def __repr__(self):
         return f"<FormulaTree timestamps = {self._timestamps} formula tree = {self._formula_tree}>"
@@ -92,6 +102,9 @@ class FormulaTree():
         Given a measurement, atom and subatom indices, update the formula tree
         """
         logging.info("Updating formula tree with measurement = %s with atom_index = %i, subatom_index = %i" % (measurement, atom_index, subatom_index))
+        # if measurement is a timestamp, convert to milliseconds
+        if type(measurement) is datetime.datetime:
+            measurement = milliseconds(measurement)/1000.0
         # add the measurement to self._measurement_dictionary
         if atom_index in self._measurement_dictionary:
             if subatom_index not in self._measurement_dictionary[atom_index]:
@@ -127,7 +140,8 @@ class FormulaTree():
                 # return the answer given by the atom under the measurement given
                 # the answer can be true, false or inconclusive (for mixed atoms)
                 logging.info("current_obj = %s matches - updating with measurement = %s" % (str(current_obj), str(measurement)))
-                return current_obj.check(measurement, subatom_index)
+                print(current_obj)
+                return current_obj.check(atom_index, subatom_index, self._measurement_dictionary)
             else:
                 # this isn't the atom we need, so just return it
                 logging.info("No match - continuing traversal")

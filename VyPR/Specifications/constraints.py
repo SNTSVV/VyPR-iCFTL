@@ -446,10 +446,12 @@ class ValueInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):
     def get_expression(self, index):
         return self.get_value_expression()
     
-    def check(self, measurement, subatom_index):
+    def check(self, atom_index, subatom_index, measurement_dictionary):
         """
-        Given a measurement, check to see whether the constraint expressed by this atom is satisfied.
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
         """
+        measurement = measurement_dictionary[atom_index][subatom_index]
         return measurement < self._constant
 
 class ValueInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
@@ -567,7 +569,12 @@ class DurationOfTransitionLessThanConstant(ConstraintBase, NormalAtom):
     def get_expression(self, index):
         return self.get_transition_duration_obj()
     
-    def check(self, measurement, subatom_index):
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        measurement = measurement_dictionary[atom_index][subatom_index]
         return measurement < self._constant
 
 class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
@@ -737,6 +744,8 @@ class TimeBetweenLessThanConstant(ConstraintBase, MixedAtom):
     def __init__(self, time_between_expression, constant):
         self._time_between_expression = time_between_expression
         self._constant = constant
+        self._observed_lhs_value = None
+        self._observed_rhs_value = None
     
     def __repr__(self):
         return f"{self._time_between_expression} < {self._constant}"
@@ -755,3 +764,22 @@ class TimeBetweenLessThanConstant(ConstraintBase, MixedAtom):
         # construct a list of the lhs and rhs of the time between operator
         expressions = [expressions.get_lhs_expression(), expressions.get_rhs_expression()]
         return expressions[index]
+    
+    def get_lhs_expression(self):
+        return self.get_expression(0)
+    
+    def get_rhs_expression(self):
+        return self.get_expression(1)
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        # first, check to see if both timestamps for the two subatoms have now been recorded
+        if measurement_dictionary[atom_index].get(0) and measurement_dictionary[atom_index].get(1):
+            # the timestamps exist, so take their difference and compare it with self._constant
+            return abs(measurement_dictionary[atom_index][1] - measurement_dictionary[atom_index][0]) < self._constant
+        else:
+            # otherwise, return the atom (this will be returned to the previous level of the formula tree)
+            return self
