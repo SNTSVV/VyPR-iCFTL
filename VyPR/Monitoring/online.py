@@ -168,10 +168,11 @@ def verdicts_to_dictionary(verdicts):
     verdict_dict_list = []
     for map_index in verdicts:
         for formula_tree in verdicts[map_index]:
-            verdict_entry = {"timestamp_sequence": [], "configuration": None}
+            verdict_entry = {"timestamp_sequence": [], "configuration": None, "observations": None}
             iso_timestamp_sequence = list(map(lambda ts : ts.isoformat(), formula_tree.get_timestamps()))
             verdict_entry["timestamp_sequence"] = iso_timestamp_sequence
             verdict_entry["configuration"] = formula_tree.get_configuration()
+            verdict_entry["observations"] = formula_tree.get_measurements_dictionary()
             verdict_dict_list.append(verdict_entry)
     return verdict_dict_list
 
