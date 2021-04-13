@@ -412,7 +412,7 @@ class ValueLengthInConcreteState(ConstraintBase, NormalAtom):
         self._value_expression = value_expression
     
     def __repr__(self):
-        return f"{self._value_expression}"
+        return f"{self._value_expression}.length()"
     
     def __eq__(self, other):
         return (type(other) is type(self)
