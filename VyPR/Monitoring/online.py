@@ -181,7 +181,7 @@ class OnlineMonitor():
     Class to model an online monitoring mechanism.
     """
 
-    def __init__(self, specification_file: str, flask_obj, monitor_per_request=False):
+    def __init__(self, specification_file: str, flask_obj=None, monitor_per_request=False):
         """
         Given a specification file, read in the specification
         and set up the necessary monitor state ready to receive information from instruments,
@@ -207,81 +207,90 @@ class OnlineMonitor():
         # set up the separate process
         logging.info("Instantiating process for monitoring")
 
-        # add end-points to flask_obj, depending on how monitoring will be performed
-        if monitor_per_request:
-            # if the monitor_per_request flag is True, we will need to instantiate a new monitoring thread
-            # and tear it down per HTTP request
-            @flask_obj.before_request
-            def start_monitor():
-                # set request time
-                g.start_time = datetime.datetime.now()
-                # set up the monitoring process/thread
-                self.monitoring_process = Thread(target=monitoring_process_function, args=(self, specification_file))
-                # start the process/thread
-                logging.info(f"Starting monitoring thread for request at time {g.start_time.isoformat()}")
-                self.monitoring_process.start()
-                # attach self to g
-                g.vypr = self
-            
-            @flask_obj.after_request
-            def stop_monitor(response):
-                # end the monitoring process
-                logging.info(f"Stopping monitoring thread that began at time {g.start_time}")
-                # send signal to end monitoring, join the thread and get verdicts
-                self.end_monitoring()
-                # get verdicts
-                verdicts = self.get_verdicts()
-                # translate dictionary form of verdicts
-                verdict_dictionary = verdicts_to_dictionary(verdicts)
-                # write verdicts to file (temporary)
-                with open(f"verdicts-{datetime.datetime.now().isoformat()}.json", "w") as h:
-                    h.write(json.dumps(verdict_dictionary))
-                return response
-        else:
-            # if the monitoring_per_request flag is False, we will only use a single monitoring thread
-            # across all executions
-            # in this case, the vypr/get_verdicts and vypr/end_monitoring end-points are set,
-            # since verdicts will be obtained by querying the monitoring thread and monitoring
-            # will have to be ended by user intervention (since it is not ended when requests end).
-
+        # check to see if we're using flask
+        if not flask_obj:
+            # no flask, so we assume we're not dealing with a web service
             # set up the monitoring thread to run globally
             self.monitoring_process = Thread(target=monitoring_process_function, args=(self, specification_file))
             # start the process
             self.monitoring_process.start()
+        else:
 
-            # before every request, attach self to g
-            @flask_obj.before_request
-            def attach_to_g():
-                # attach self to g
-                g.vypr = self
-
-            @flask_obj.route("/vypr/get_verdicts/")
-            def get_verdicts():
-                # check to see if the monitoring process/thread is still running
-                if self.monitoring_process:
-                    # send signal for verdict collection
-                    self.send_verdict_collection_signal()
-                    # get verdicts
-                    verdicts = self.get_verdicts()
-                    # translate dictionary form of verdicts
-                    verdict_dictionary = verdicts_to_dictionary(verdicts)
-                    return json.dumps(verdict_dictionary)
-                else:
-                    return "VyPR monitoring is no longer running."
-            
-            @flask_obj.route("/vypr/end_monitoring/")
-            def end_monitoring():
-                # check to see if the monitoring process/thread is still running
-                if self.monitoring_process:
-                    # send signal to end monitoring
+            # add end-points to flask_obj, depending on how monitoring will be performed
+            if monitor_per_request:
+                # if the monitor_per_request flag is True, we will need to instantiate a new monitoring thread
+                # and tear it down per HTTP request
+                @flask_obj.before_request
+                def start_monitor():
+                    # set request time
+                    g.start_time = datetime.datetime.now()
+                    # set up the monitoring process/thread
+                    self.monitoring_process = Thread(target=monitoring_process_function, args=(self, specification_file))
+                    # start the process/thread
+                    logging.info(f"Starting monitoring thread for request at time {g.start_time.isoformat()}")
+                    self.monitoring_process.start()
+                    # attach self to g
+                    g.vypr = self
+                
+                @flask_obj.after_request
+                def stop_monitor(response):
+                    # end the monitoring process
+                    logging.info(f"Stopping monitoring thread that began at time {g.start_time}")
+                    # send signal to end monitoring, join the thread and get verdicts
                     self.end_monitoring()
                     # get verdicts
                     verdicts = self.get_verdicts()
                     # translate dictionary form of verdicts
                     verdict_dictionary = verdicts_to_dictionary(verdicts)
-                    return json.dumps(verdict_dictionary)
-                else:
-                    return "VyPR monitoring is no longer running."
+                    # write verdicts to file (temporary)
+                    with open(f"verdicts-{datetime.datetime.now().isoformat()}.json", "w") as h:
+                        h.write(json.dumps(verdict_dictionary))
+                    return response
+            else:
+                # if the monitoring_per_request flag is False, we will only use a single monitoring thread
+                # across all executions
+                # in this case, the vypr/get_verdicts and vypr/end_monitoring end-points are set,
+                # since verdicts will be obtained by querying the monitoring thread and monitoring
+                # will have to be ended by user intervention (since it is not ended when requests end).
+
+                # set up the monitoring thread to run globally
+                self.monitoring_process = Thread(target=monitoring_process_function, args=(self, specification_file))
+                # start the process
+                self.monitoring_process.start()
+
+                # before every request, attach self to g
+                @flask_obj.before_request
+                def attach_to_g():
+                    # attach self to g
+                    g.vypr = self
+
+                @flask_obj.route("/vypr/get_verdicts/")
+                def get_verdicts():
+                    # check to see if the monitoring process/thread is still running
+                    if self.monitoring_process:
+                        # send signal for verdict collection
+                        self.send_verdict_collection_signal()
+                        # get verdicts
+                        verdicts = self.get_verdicts()
+                        # translate dictionary form of verdicts
+                        verdict_dictionary = verdicts_to_dictionary(verdicts)
+                        return json.dumps(verdict_dictionary)
+                    else:
+                        return "VyPR monitoring is no longer running."
+                
+                @flask_obj.route("/vypr/end_monitoring/")
+                def end_monitoring():
+                    # check to see if the monitoring process/thread is still running
+                    if self.monitoring_process:
+                        # send signal to end monitoring
+                        self.end_monitoring()
+                        # get verdicts
+                        verdicts = self.get_verdicts()
+                        # translate dictionary form of verdicts
+                        verdict_dictionary = verdicts_to_dictionary(verdicts)
+                        return json.dumps(verdict_dictionary)
+                    else:
+                        return "VyPR monitoring is no longer running."
 
     
     def get_new_measurement(self):

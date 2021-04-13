@@ -56,7 +56,7 @@ class FormulaTree():
             self._measurement_dictionary = {}
     
     def __repr__(self):
-        return f"<FormulaTree timestamps = {self._timestamps} formula tree = {self._formula_tree}>"
+        return f"<FormulaTree timestamps = {self._timestamps} formula tree = {self._formula_tree} observations = {self._measurement_dictionary}>"
     
     def get_timestamps(self):
         return self._timestamps
@@ -140,7 +140,6 @@ class FormulaTree():
                 # return the answer given by the atom under the measurement given
                 # the answer can be true, false or inconclusive (for mixed atoms)
                 logging.info("current_obj = %s matches - updating with measurement = %s" % (str(current_obj), str(measurement)))
-                print(current_obj)
                 return current_obj.check(atom_index, subatom_index, self._measurement_dictionary)
             else:
                 # this isn't the atom we need, so just return it

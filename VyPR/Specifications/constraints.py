@@ -77,7 +77,13 @@ def _derive_sequence_of_temporal_operators(obj) -> list:
         # for example when a Next... class is found
         if type(current_obj) in [ValueInConcreteStateEqualsConstant,
                                 ValueInConcreteStateLessThanConstant,
-                                ValueInConcreteStateGreaterThanConstant]:
+                                ValueInConcreteStateGreaterThanConstant,
+                                ValueLengthInConcreteStateEqualsConstant,
+                                ValueLengthInConcreteStateGreaterThanConstant,
+                                ValueLengthInConcreteStateLessThanConstant,
+                                ValueLengthInConcreteStateEqualsTransitionDuration,
+                                ValueLengthInConcreteStateGreaterThanTransitionDuration,
+                                ValueLengthInConcreteStateLessThanTransitionDuration]:
             current_obj = current_obj.get_value_expression()
 
         elif type(current_obj) in [DurationOfTransitionLessThanConstant,
@@ -86,6 +92,9 @@ def _derive_sequence_of_temporal_operators(obj) -> list:
         
         elif type(current_obj) is ValueInConcreteState:
             current_obj = current_obj.get_concrete_state_expression()
+        
+        elif type(current_obj) is ValueLengthInConcreteState:
+            current_obj = current_obj.get_value_expression()
         
         elif type(current_obj) is DurationOfTransition:
             current_obj = current_obj.get_transition_expression()
@@ -171,9 +180,7 @@ class Constraint():
                 stack += top.get_disjuncts()
             elif type(top) is Negation:
                 stack.append(top.get_operand())
-            elif type(top) in [ValueInConcreteStateEqualsConstant, ValueInConcreteStateLessThanConstant, ValueInConcreteStateGreaterThanConstant,
-                                DurationOfTransitionLessThanConstant, DurationOfTransitionGreaterThanConstant,
-                                TimeBetweenLessThanConstant]:
+            elif _is_atomic_constraint(top):
                 all_atomic_constraints.append(top)
             
         return all_atomic_constraints
@@ -381,6 +388,9 @@ class ValueInConcreteState():
     def get_program_variable(self):
         return self._program_variable_name
     
+    def length(self):
+        return ValueLengthInConcreteState(self)
+    
     def __lt__(self, other):
         if type(other) in [int, str, float]:
             return ValueInConcreteStateLessThanConstant(self, other)
@@ -393,9 +403,276 @@ class ValueInConcreteState():
         if type(other) in [int, str, float, bool]:
             return ValueInConcreteStateEqualsConstant(self, other)
 
+class ValueLengthInConcreteState(ConstraintBase, NormalAtom):
+    """
+    Class to represent the atomic constraint q(x).length() == n for a concrete state variable q, a program variable
+    x and a (numerical) constant n.
+    """
+    def __init__(self, value_expression):
+        self._value_expression = value_expression
+    
+    def __repr__(self):
+        return f"{self._value_expression}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def __lt__(self, other):
+        if type(other) in [int, float]:
+            return ValueLengthInConcreteStateLessThanConstant(self, other)
+        elif type(other) is DurationOfTransition:
+            return ValueLengthInConcreteStateLessThanTransitionDuration(self, other)
+    
+    def __gt__(self, other):
+        if type(other) in [int, float]:
+            return ValueLengthInConcreteStateGreaterThanConstant(self, other)
+        elif type(other) is DurationOfTransition:
+            return ValueLengthInConcreteStateGreaterThanTransitionDuration(self, other)
+    
+    def equals(self, other):
+        if type(other) in [int, float]:
+            return ValueLengthInConcreteStateEqualsConstant(self, other)
+        elif type(other) is DurationOfTransition:
+            return ValueLengthInConcreteStateEqualsTransitionDuration(self, other)
+
 """
 Atomic constraints for concrete states.
 """
+
+class ValueLengthInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):
+    """
+    Class to represent the atomic constraint q(x).length() < n for a concrete state variable q, a program variable x
+    and a constant n.
+    """
+
+    def __init__(self, value_expression, constant):
+        self._value_expression = value_expression
+        self._constant = constant
+    
+    def __repr__(self):
+        return f"{self._value_expression} < {self._constant}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._constant == other._constant)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def get_expression(self, index):
+        return self.get_value_expression()
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        measurement = measurement_dictionary[atom_index][subatom_index]
+        return measurement < self._constant
+
+class ValueLengthInConcreteStateGreaterThanConstant(ConstraintBase, NormalAtom):
+    """
+    Class to represent the atomic constraint q(x).length() > n for a concrete state variable q, a program variable x
+    and a constant n.
+    """
+
+    def __init__(self, value_expression, constant):
+        self._value_expression = value_expression
+        self._constant = constant
+    
+    def __repr__(self):
+        return f"{self._value_expression} > {self._constant}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._constant == other._constant)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def get_expression(self, index):
+        return self.get_value_expression()
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        measurement = measurement_dictionary[atom_index][subatom_index]
+        return measurement > self._constant
+
+class ValueLengthInConcreteStateEqualsConstant(ConstraintBase, NormalAtom):
+    """
+    Class to represent the atomic constraint q(x).length().equals(n) for a concrete state variable q, a program variable x
+    and a constant n.
+    """
+
+    def __init__(self, value_expression, constant):
+        self._value_expression = value_expression
+        self._constant = constant
+    
+    def __repr__(self):
+        return f"{self._value_expression}.equals({self._constant})"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._constant == other._constant)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def get_expression(self, index):
+        return self.get_value_expression()
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        measurement = measurement_dictionary[atom_index][subatom_index]
+        return measurement == self._constant
+
+class ValueLengthInConcreteStateLessThanTransitionDuration(ConstraintBase, MixedAtom):
+    """
+    Class to represent the atomic constraint q(x).length() < t.duration() for a concrete state variable q, a program variable x
+    and a transition duration t.duration().
+    """
+
+    def __init__(self, value_expression, duration):
+        self._value_expression = value_expression
+        self._duration = duration
+    
+    def __repr__(self):
+        return f"{self._value_expression} < {self._duration}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._duration == other._duration)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def get_expression(self, index):
+        # construct a list of the lhs and rhs of the time between operator
+        expressions = [self._value_expression, self._duration]
+        return expressions[index]
+    
+    def get_lhs_expression(self):
+        return self.get_expression(0)
+    
+    def get_rhs_expression(self):
+        return self.get_expression(1)
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        # first, check to see if both timestamps for the two subatoms have now been recorded
+        if measurement_dictionary[atom_index].get(0) and measurement_dictionary[atom_index].get(1):
+            # the measurements exist, so compare them
+            return measurement_dictionary[atom_index][0] < measurement_dictionary[atom_index][1]
+        else:
+            # otherwise, return the atom (this will be returned to the previous level of the formula tree)
+            return self
+
+class ValueLengthInConcreteStateGreaterThanTransitionDuration(ConstraintBase, MixedAtom):
+    """
+    Class to represent the atomic constraint q(x).length() > t.duration() for a concrete state variable q, a program variable x
+    and a transition duration t.duration().
+    """
+
+    def __init__(self, value_expression, duration):
+        self._value_expression = value_expression
+        self._duration = duration
+    
+    def __repr__(self):
+        return f"{self._value_expression} > {self._duration}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._duration == other._duration)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def get_expression(self, index):
+        # construct a list of the lhs and rhs of the time between operator
+        expressions = [self._value_expression, self._duration]
+        return expressions[index]
+    
+    def get_lhs_expression(self):
+        return self.get_expression(0)
+    
+    def get_rhs_expression(self):
+        return self.get_expression(1)
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        # first, check to see if both timestamps for the two subatoms have now been recorded
+        if measurement_dictionary[atom_index].get(0) and measurement_dictionary[atom_index].get(1):
+            # the measurements exist, so compare them
+            return measurement_dictionary[atom_index][0] > measurement_dictionary[atom_index][1]
+        else:
+            # otherwise, return the atom (this will be returned to the previous level of the formula tree)
+            return self
+
+class ValueLengthInConcreteStateEqualsTransitionDuration(ConstraintBase, MixedAtom):
+    """
+    Class to represent the atomic constraint q(x).length().equals(t.duration()) for a concrete state variable q, a program variable x
+    and a transition duration t.duration().
+    """
+
+    def __init__(self, value_expression, duration):
+        self._value_expression = value_expression
+        self._duration = duration
+    
+    def __repr__(self):
+        return f"{self._value_expression}.equals({self._duration})"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._value_expression == other._value_expression
+                and self._duration == other._duration)
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def get_expression(self, index):
+        # construct a list of the lhs and rhs of the time between operator
+        expressions = [self._value_expression, self._duration]
+        return expressions[index]
+    
+    def get_lhs_expression(self):
+        return self.get_expression(0)
+    
+    def get_rhs_expression(self):
+        return self.get_expression(1)
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        # first, check to see if both timestamps for the two subatoms have now been recorded
+        if measurement_dictionary[atom_index].get(0) and measurement_dictionary[atom_index].get(1):
+            # the measurements exist, so compare them
+            return measurement_dictionary[atom_index][0] == measurement_dictionary[atom_index][1]
+        else:
+            # otherwise, return the atom (this will be returned to the previous level of the formula tree)
+            return self
 
 class ValueInConcreteStateEqualsConstant(ConstraintBase, NormalAtom):
     """
@@ -418,8 +695,16 @@ class ValueInConcreteStateEqualsConstant(ConstraintBase, NormalAtom):
     def get_value_expression(self):
         return self._value_expression
     
-    def get_expression(self):
+    def get_expression(self, index):
         return self.get_value_expression()
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        measurement = measurement_dictionary[atom_index][subatom_index]
+        return measurement == self._constant
 
 
 class ValueInConcreteStateLessThanConstant(ConstraintBase, NormalAtom):

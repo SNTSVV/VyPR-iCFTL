@@ -9,6 +9,7 @@ from shutil import copyfile
 from VyPR.Instrumentation.analyse import Analyser
 from VyPR.Instrumentation.prepare import prepare_specification
 from VyPR.Specifications.constraints import (ValueInConcreteState,
+                                                ValueLengthInConcreteState,
                                                 DurationOfTransition,
                                                 ConcreteStateBeforeTransition,
                                                 ConcreteStateAfterTransition,
@@ -22,12 +23,15 @@ class Instrument():
     modify the ASTs of files to be instrumented and perform the final compilation.
     """
 
-    def __init__(self, specification_file: str, root_directory: str):
+    def __init__(self, specification_file: str, root_directory: str, assume_flask: bool):
         """
         Invoke analyser with the specification file and root directory given.
         """
         # store the root directory
         self._root_directory = root_directory
+
+        # remember whether or not to assume Flask in the instrumentation code we place
+        self._assume_flask = assume_flask
 
         logger.log.info("Importing specification to set self._specification")
 
@@ -236,7 +240,7 @@ class Instrument():
             self._module_to_lines[module_name].insert(triple[1], triple[2])
         
         # now, insert additional imports
-        imports = """import datetime"""
+        imports = """import datetime as vypr_dt"""
         lines = imports.split("\n")
         # for each module, insert these lines at the beginning
         for module_name in self._module_to_lines:
@@ -273,7 +277,8 @@ class Instrument():
         # construct the indentation string
         indentation = " "*indentation_level
         # define instrument function
-        instrument_function = "g.vypr.send_trigger"
+        base = "g.vypr" if self._assume_flask else "vypr"
+        instrument_function = f"{base}.send_trigger"
         # check the instrument type
         logger.log.info(f"Generating instrument code for quantifier with variable = {variable}, based on map_index = {map_index}")
         code = f"""{indentation}{instrument_function}({map_index}, '{variable}')"""
@@ -293,17 +298,22 @@ class Instrument():
         # construct the indentation string
         indentation = " "*indentation_level
         # define instrument function
-        instrument_function = "g.vypr.send_measurement"
+        base = "g.vypr" if self._assume_flask else "vypr"
+        instrument_function = f"{base}.send_measurement"
         # check the instrument type
         logger.log.info(f"Generating measurement instrument code according to subatom = {subatom} with type {type(subatom)}")
         if type(subatom) is ValueInConcreteState:
             # construct the instrument code
             code = f"""{indentation}{instrument_function}({map_index}, {atom_index}, {subatom_index}, {subatom.get_program_variable()})"""
             code = [(module_name, line_index+1, code)]
+        elif type(subatom) is ValueLengthInConcreteState:
+            # construct the instrument code
+            code = f"""{indentation}{instrument_function}({map_index}, {atom_index}, {subatom_index}, len({subatom.get_value_expression().get_program_variable()}))"""
+            code = [(module_name, line_index+1, code)]
         elif type(subatom) is DurationOfTransition:
             # construct measurement code
-            measurement_start_code = "ts_start = datetime.datetime.now()"
-            measurement_end_code = "ts_end = datetime.datetime.now()"
+            measurement_start_code = "ts_start = vypr_dt.datetime.now()"
+            measurement_end_code = "ts_end = vypr_dt.datetime.now()"
             measurement_difference_code = "duration = (ts_end - ts_start).total_seconds()"
             # construct the instrument code
             code_part_1 = \
@@ -315,13 +325,13 @@ class Instrument():
             code = [(module_name, line_index, code_part_1), (module_name, line_index+1, code_part_2), (module_name, line_index+1, code_part_3)]
         elif type(subatom) is ConcreteStateBeforeTransition:
             # construct measurement code
-            measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
+            measurement_code = f"ts_{subatom_index} = vypr_dt.datetime.now()"
             # construct the instrument code
             instrument_code = f"""{indentation}{measurement_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
             code = [(module_name, line_index, instrument_code)]
         elif type(subatom) is ConcreteStateAfterTransition:
             # construct measurement code
-            measurement_code = f"ts_{subatom_index} = datetime.datetime.now()"
+            measurement_code = f"ts_{subatom_index} = vypr_dt.datetime.now()"
             # construct the instrument code
             instrument_code = f"""{indentation}{measurement_code}; {instrument_function}({map_index}, {atom_index}, {subatom_index}, ts_{subatom_index})"""
             code = [(module_name, line_index+1, instrument_code)]

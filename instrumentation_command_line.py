@@ -23,12 +23,13 @@ logger.initialise_logging(directory="logs/instrumentation/")
 parser = argparse.ArgumentParser(description="Command line interface for the instrumentation package.")
 parser.add_argument("--root-dir", type=str, required=True, help="The directory containing the code for which we will generate SCFGs.")
 parser.add_argument("--spec-file", type=str, required=True, help="The file containing the code for the specification that we should instrument for.")
+parser.add_argument("--flask", action='store_true', help="If given, the instruments placed will use g.vypr.  If not, the instruments placed will use vypr.")
 
 # parse the arguments
 args = parser.parse_args()
 
 # initialise Instrument object
-instrument_instance = Instrument(args.spec_file, args.root_dir)
+instrument_instance = Instrument(args.spec_file, args.root_dir, args.flask)
 
 # insert instruments
 instrument_instance.insert_instruments()
