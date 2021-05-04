@@ -6,142 +6,22 @@ import ast
 import datetime
 import graphviz
 
-from VyPR.Specifications.predicates import changes, calls
 import VyPR.Logging.logger as logger
 
-class SymbolicState():
-    """
-    Base class for all types of symbolic states.
-    """
-
-    def __init__(self):
-        self._children: list = []
-        self._parents: list = []
-    
-    def __repr__(self):
-        return f"<{type(self).__name__} (id {id(self)})>"
-    
-    def is_statement_symbolic_state(self):
-        return type(self) is StatementSymbolicState
-    
-    def add_child(self, child_symbolic_state):
-        """
-        Add a child symbolic state to self.
-        """
-        logger.log.info(f"Appending child_symbolic_state = {child_symbolic_state} to self._children with self = {self}")
-        self._children.append(child_symbolic_state)
-        # also set self as parent of child
-        logger.log.info(f"Also calling child_symbolic_state.add_parent to add self = {self} as parent of child_symbolic_state = {child_symbolic_state}")
-        child_symbolic_state.add_parent(self)
-    
-    def add_parent(self, parent_symbolic_state):
-        """
-        Add a parent symbolic state to self.
-        """
-        logger.log.info(f"Appending parent_symbolic_state = {parent_symbolic_state} to self._parents with self = {self}")
-        self._parents.append(parent_symbolic_state)
-    
-    def get_children(self) -> list:
-        return self._children
-    
-    def get_parents(self) -> list:
-        return self._parents
-
-class EmptySymbolicState(SymbolicState):
-    """
-    A symbolic state class to be used as the root for any symbolic control-flow graph.
-    """
-    def __init__(self):
-        super().__init__()
-
-class StatementSymbolicState(SymbolicState):
-    """
-    A symbolic state class to be used as the state induced by a normal statement
-    (such as an assignment or a function call).
-    """
-    def __init__(self, symbols_changed: list, ast_obj):
-        super().__init__()
-        self._symbols_changed = symbols_changed
-        self._ast_obj = ast_obj
-    
-    def __repr__(self):
-        return f"<SymbolicState (id {id(self)}, changes {self._symbols_changed})>"
-    
-    def get_symbols_changed(self) -> list:
-        return self._symbols_changed
-    
-    def get_ast_object(self):
-        return self._ast_obj
-
-class ControlFlowSymbolicState(SymbolicState):
-    """
-    A symbolic state class to be used as the base class for all symbolic states
-    representing control-flow.
-    """
-    def __init__(self):
-        super().__init__()
-
-class ConditionalEntrySymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the entry symbolic state for conditionals.
-    """
-    def __init__(self, ast_obj):
-        super().__init__()
-        self._ast_obj = ast_obj
-
-class ConditionalExitSymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the exit symbolic state for conditionals.
-    """
-    def __init__(self):
-        super().__init__()
-
-class ForLoopEntrySymbolicState(StatementSymbolicState):
-    """
-    A symbolic state class to be used as the entry symbolic state for for-loops.
-
-    The constructor takes the name of the iterator used by the for loop.
-    """
-    def __init__(self, loop_counter_variables, ast_obj):
-        super().__init__(loop_counter_variables, ast_obj)
-        self._ast_obj = ast_obj
-
-class ForLoopExitSymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the exit symbolic state for for-loops.
-    """
-    def __init__(self):
-        super().__init__()
-
-class WhileLoopEntrySymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the entry symbolic state for while-loops.
-    """
-    def __init__(self, ast_obj):
-        super().__init__()
-        self._ast_obj = ast_obj
-
-class WhileLoopExitSymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the exit symbolic state for while-loops.
-    """
-    def __init__(self):
-        super().__init__()
-
-class TryEntrySymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the entry symbolic state for try-excepts.
-    """
-    def __init__(self, ast_obj):
-        super().__init__()
-        self._ast_obj = ast_obj
-
-class TryExitSymbolicState(ControlFlowSymbolicState):
-    """
-    A symbolic state class to be used as the exit symbolic state for try-excepts.
-    """
-    def __init__(self):
-        super().__init__()
+from VyPR.Specifications.predicates import changes, calls
+from VyPR.SCFG.utils import process_assignment_ast, process_expression_ast, extract_function_names, extract_symbol_names_from_target
+from VyPR.SCFG.symbolic_states import (SymbolicState,
+                                        EmptySymbolicState,
+                                        StatementSymbolicState,
+                                        ControlFlowSymbolicState,
+                                        ConditionalEntrySymbolicState,
+                                        ConditionalExitSymbolicState,
+                                        ForLoopEntrySymbolicState,
+                                        ForLoopExitSymbolicState,
+                                        WhileLoopEntrySymbolicState,
+                                        WhileLoopExitSymbolicState,
+                                        TryEntrySymbolicState,
+                                        TryExitSymbolicState)
 
 class SCFG():
 
@@ -284,8 +164,8 @@ class SCFG():
                 logger.log.info(f"AST {subprogram_ast} is {type(subprogram_ast)} instance")
                 # define dictionary from ast types to the processing method to use
                 ast_type_to_function = {
-                    ast.Assign: self._process_assignment_ast,
-                    ast.Expr: self._process_expression_ast
+                    ast.Assign: process_assignment_ast,
+                    ast.Expr: process_expression_ast
                 }
                 # instantiate the symbolic state
                 new_symbolic_state: SymbolicState = ast_type_to_function[type(subprogram_ast)](subprogram_ast, subprogram)
@@ -379,7 +259,7 @@ class SCFG():
                 # instantiate symbolic states for entry and exit
                 logger.log.info(f"Setting up for-loop entry and exit symbolic states")
                 # derive the list of names of program variables used as loop counters
-                loop_counter_variables = self._extract_symbol_names_from_target(subprogram_ast.target)
+                loop_counter_variables = extract_symbol_names_from_target(subprogram_ast.target)
                 logger.log.info(f"Loop counter variables used by the loop are {loop_counter_variables}")
                 # instantiate states
                 entry_symbolic_state: ForLoopEntrySymbolicState = ForLoopEntrySymbolicState(loop_counter_variables, subprogram_ast)
@@ -462,84 +342,3 @@ class SCFG():
                 )
         graph.render(filename)
         logger.log.info(f"SCFG written to file {filename}")
-    
-    def _process_assignment_ast(self, stmt_ast: ast.Assign, stmt_ast_parent_block):
-        """
-        Instantiate a new SymbolicState instance based on this assignment statement.
-
-        The target program variables, along with any functions called on the right-hand-side
-        of the assignment, will be included as symbols changed by that Symbolic State
-        """
-        logger.log.info("Generating SymbolicState instance from assignment ast")
-        # first, add a reference from stmt_ast to its parent block
-        stmt_ast.parent_block = stmt_ast_parent_block
-        logger.log.info("Instantiating symbolic state for AST instance stmt_ast = %s" % stmt_ast)
-        # determine the program variables assigned on the left-hand-side
-        targets: list = stmt_ast.targets
-        # extract names - for now just care about normal program variables, not attributes or functions
-        logger.log.info("Extracting list of assignment target names")
-        target_names: list = []
-        for target in targets:
-            target_names += self._extract_symbol_names_from_target(target)
-        logger.log.info("List of all program variables changed is %s" % target_names)
-        # extract function names
-        assigned_value = stmt_ast.value
-        function_names: list = self._extract_function_names(assigned_value)
-        logger.log.info("List of all program functions called is %s" % function_names)
-        # merge the two lists of symbols
-        logger.log.info("Merging lists of assignment target names and function names")
-        all_symbols: list = target_names + function_names
-        logger.log.info("List of all symbols to mark as changed in the symbolic state is %s" % all_symbols)
-        # set up a SymbolicState instance
-        logger.log.info("Instantiating new StatementSymbolicState instance with all_symbols = %s" % all_symbols)
-        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
-        return symbolic_state
-    
-    def _process_expression_ast(self, stmt_ast: ast.Expr, stmt_ast_parent_block):
-        """
-        Instantiate a new SymbolicState instance based on this expression statement.
-
-        TODO: handle more complex ast structures for forming names, for example obj.subobj.var.
-        """
-        # first, add a reference from stmt_ast to its parent block
-        stmt_ast.parent_block = stmt_ast_parent_block
-        logger.log.info(f"Instantiating a symbolic state for AST instance stmt_ast = {stmt_ast}")
-        # initialise empty list of symbols
-        all_symbols: list = []
-        # walk the ast to find the symbols used
-        for walked_ast in ast.walk(stmt_ast):
-            # extract information according to type
-            if type(walked_ast) is ast.Name:
-                all_symbols.append(walked_ast.id)
-        
-        # instantiate symbolic state
-        logger.log.info(f"Instantiating new StatementSymbolicState instance with symbols {all_symbols}")
-        symbolic_state: SymbolicState = StatementSymbolicState(all_symbols, stmt_ast)
-        return symbolic_state
-    
-    def _extract_symbol_names_from_target(self, subast) -> list:
-        """
-        Given an object from a program ast, extract string representations of the names
-        of the symbols used in that ast.
-        """
-        # initialise an empty list of the symbol names
-        symbol_names = []
-        # walk the target object to look for ast.Name instances
-        for walked_ast in ast.walk(subast):
-            if type(walked_ast) is ast.Name:
-                symbol_names.append(walked_ast.id)
-        return symbol_names
-    
-    def _extract_function_names(self, subast) -> list:
-        """
-        Given an object from a program ast, extract string representations of the names
-        of the functions used in that ast.
-        """
-        # initialise an empty list of the function names
-        function_names = []
-        # walk the ast and extract function names
-        for walked_ast in ast.walk(subast):
-            if type(walked_ast) is ast.Call:
-                if type(walked_ast.func) is ast.Name:
-                    function_names.append(walked_ast.func.id)
-        return function_names
