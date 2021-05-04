@@ -38,6 +38,9 @@ class SCFG():
         # begin processing
         self.subprogram_to_scfg(self._program_asts, self._root)
     
+    def get_root_symbolic_state(self):
+        return self._root
+    
     def get_symbolic_states(self):
         return self._symbolic_states
     

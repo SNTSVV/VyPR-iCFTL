@@ -12,7 +12,7 @@ import VyPR.Logging.logger as logger
 from VyPR.SCFG.symbolic_states import EmptySymbolicState, StatementSymbolicState
 from VyPR.SCFG.utils import process_assignment_ast, process_expression_ast, extract_function_names, extract_symbol_names_from_target
 
-class TestSCFGBuilder(unittest.TestCase):
+class TestSCFGUtils(unittest.TestCase):
 
     def setUp(self):
         # initialise logger
