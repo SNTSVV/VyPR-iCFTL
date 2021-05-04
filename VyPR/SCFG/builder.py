@@ -125,16 +125,19 @@ class SCFG():
         the possible paths.  Each time a symbolic state is encountered that changes program_variable,
         end recursion there and add that symbolic state to a global list.
         """
-        # recurse with shared list
+        # recurse with shared lists for next and encountered
         list_of_possible_next_symbolic_states = []
-        self._get_next_symbolic_states(program_variable, base_symbolic_state, list_of_possible_next_symbolic_states)
+        encountered = []
+        self._get_next_symbolic_states(program_variable, base_symbolic_state, list_of_possible_next_symbolic_states, encountered)
         return list_of_possible_next_symbolic_states
 
     
-    def _get_next_symbolic_states(self, program_variable, current_symbolic_state, list_of_nexts: list):
+    def _get_next_symbolic_states(self, program_variable, current_symbolic_state, list_of_nexts: list, encountered: list):
         """
         Recursive case for get_next_symbolic_states.
         """
+        # add current_symbolic_state to encountered
+        encountered.append(current_symbolic_state)
         # check to see whether current_symbolic_state changes program_variable
         if (current_symbolic_state.is_statement_symbolic_state() and
             program_variable in current_symbolic_state.get_symbols_changed()):
@@ -145,7 +148,8 @@ class SCFG():
         else:
             # recurse on each child
             for child in current_symbolic_state.get_children():
-                self._get_next_symbolic_states(program_variable, child, list_of_nexts)
+                if child not in encountered:
+                    self._get_next_symbolic_states(program_variable, child, list_of_nexts, encountered)
             
 
     
