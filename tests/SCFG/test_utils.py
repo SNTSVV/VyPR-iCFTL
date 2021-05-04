@@ -10,7 +10,7 @@ sys.path.append("..")
 import VyPR.Logging.logger as logger
 
 from VyPR.SCFG.symbolic_states import EmptySymbolicState, StatementSymbolicState
-from VyPR.SCFG.utils import process_assignment_ast, process_expression_ast
+from VyPR.SCFG.utils import process_assignment_ast, process_expression_ast, extract_function_names, extract_symbol_names_from_target
 
 class TestSCFGBuilder(unittest.TestCase):
 
@@ -47,3 +47,15 @@ class TestSCFGBuilder(unittest.TestCase):
         # assertions
         self.assertIsInstance(expression_symbolic_state, StatementSymbolicState)
         self.assertListEqual(expression_symbolic_state.get_symbols_changed(), ["f"])
+    
+    def test_extract_variable_names(self):
+        # extract the variable names from the right-hand-side of the assignment
+        extracted_variable_names = extract_symbol_names_from_target(self.assignment_stmt_ast.value)
+        # assertions
+        self.assertListEqual(extracted_variable_names, ["g"])
+    
+    def test_extract_function_names(self):
+        # extract the function names from the right-hand-side of the assignment
+        extracted_function_names = extract_function_names(self.assignment_stmt_ast.value)
+        # assertions
+        self.assertListEqual(extracted_function_names, ["g"])
