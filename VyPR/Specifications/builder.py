@@ -195,6 +195,8 @@ class Specification():
                 # traverse both arguments to the timeBetween operator
                 stack.append(top.get_time_between_expression().get_lhs_expression())
                 stack.append(top.get_time_between_expression().get_rhs_expression())
+        
+        all_function_names = list(set(all_function_names))
             
         return all_function_names
     
@@ -270,6 +272,9 @@ class Forall():
         else:
             # this is not the last quantifier - there is another nested inside
             return f"forall {self._variable} in {self._predicate}:\n{self._quantifier}"
+    
+    def get_specification_obj(self):
+        return self._specification_obj
     
     def get_quantifier(self):
         return self._quantifier
