@@ -10,3 +10,5 @@ toml==0.10.2
 uncompyle6==3.7.4
 wrapt==1.12.1
 xdis==5.0.7
+Sphinx==3.4.3
+sphinx-rtd-theme==0.5.1
