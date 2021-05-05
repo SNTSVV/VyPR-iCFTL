@@ -1,5 +1,5 @@
 """
-Module containing tests for the VyPR.SCFG.builder module.
+Module containing tests for the VyPR.SCFG.utils module.
 """
 
 import unittest
