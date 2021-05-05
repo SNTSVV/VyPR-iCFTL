@@ -73,3 +73,19 @@ class TestSCFGSearch(unittest.TestCase):
         # assertions
         for symbolic_state in symbolic_states:
             self.assertListEqual(symbolic_state.get_symbols_changed(), ["f1"])
+    
+    def test_get_instrumentation_points_for_atomic_constraint(self):
+        # construct temporal operator
+        concrete_state_variable = ConcreteStateVariable('q')
+        temporal_operator = concrete_state_variable.next(calls('f1').during('function'))
+        atomic_constraint = temporal_operator.duration() < 1
+        # get symbolic state from temporal operator
+        symbolic_states_dict = self.scfg_searcher.get_instrumentation_points_for_atomic_constraint(
+            atomic_constraint,
+            {
+                'q': self.scfg.get_symbolic_states()[1]
+            }
+        )
+        # assertions
+        for symbolic_state in symbolic_states_dict[0]:
+            self.assertListEqual(symbolic_state.get_symbols_changed(), ["f1"])
