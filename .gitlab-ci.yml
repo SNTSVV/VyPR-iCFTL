@@ -14,6 +14,7 @@ unittests:
     stage: test
     before_script:
         - echo "Running unit tests."
+        - mkdir logs/test-logs/instrumentation/
         - pip install virtualenv
         - virtualenv venv
         - source venv/bin/activate
