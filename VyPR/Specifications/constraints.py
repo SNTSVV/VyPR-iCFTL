@@ -11,7 +11,7 @@ q(x) < 10 is a constraint and is represented using the classes in this module.
 from VyPR.Specifications.predicates import changes, calls
 import VyPR.Logging.logger as logger
 
-def _is_atomic_constraint(obj):
+def _is_constraint_base(obj):
     """
     Decide whether obj has ConstraintBase as a base class.
     """
@@ -27,7 +27,7 @@ def is_complete(obj):
     """
     Decide whether obj is complete, or needs to be completed by further method calls.
     """
-    return _is_connective(obj) or _is_atomic_constraint(obj)
+    return _is_connective(obj) or _is_constraint_base(obj)
 
 def is_normal_atom(obj):
     """
@@ -128,7 +128,8 @@ def get_base_variable(obj) -> list:
     Get the temporal operator sequence of obj and return the last element (the base variable)
 
     Note: we assume that the object given does not have multiple base variables, hence
-    in the case of a mixed atom, the object given should be a part of the atomic constraint.
+    in the case of a mixed atom, the object given should be a part of the atomic constraint (and not the atomic constraint
+    itself).
     """
     return _derive_sequence_of_temporal_operators(obj)[-1]
 
@@ -180,7 +181,7 @@ class Constraint():
                 stack += top.get_disjuncts()
             elif type(top) is Negation:
                 stack.append(top.get_operand())
-            elif _is_atomic_constraint(top):
+            elif _is_constraint_base(top):
                 all_atomic_constraints.append(top)
             
         return all_atomic_constraints
