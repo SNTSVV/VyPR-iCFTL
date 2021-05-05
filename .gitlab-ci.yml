@@ -1,0 +1,28 @@
+default:
+    image: python:3.8
+
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+
+stages:
+    - build
+    - test
+
+unittests:
+    stage: test
+    before_script:
+        - echo "Running unit tests."
+        - mkdir logs
+        - mkdir logs/test-logs
+        - mkdir logs/test-logs/instrumentation
+        - pip install virtualenv
+        - virtualenv venv
+        - source venv/bin/activate
+        - pip install -r requirements.txt
+        - pwd
+    script:
+        - "cd tests/ && python3 -m unittest"
+    after_script:
+        - echo "Finished running unit tests."
