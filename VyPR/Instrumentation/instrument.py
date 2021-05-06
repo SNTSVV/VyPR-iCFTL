@@ -40,13 +40,12 @@ class Instrument():
 
         logger.log.info(f"Imported specification is\n{self._specification}")
 
-        # instantiate the analyser
-        logger.log.info("Initialising Analyser instance")
-        self._analyser = Analyser(self._specification, root_directory)
-
+        # get a list of all functions used in the specification
+        logger.log.info("Calling self._specification.get_function_names_used to get a list of all modules relevant to the specification")
+        self._all_functions = self._specification.get_function_names_used()
         # get the list of all modules that contain functions referred to in the specification
-        logger.log.info("Calling self._analyser.get_all_modules to get a list of all modules relevant to the specification")
-        self._all_modules = self._analyser.get_all_modules()
+        logger.log.info("Calling self._derive_list_of_modules to get a list of all modules relevant to the specification")
+        self._all_modules = self._derive_list_of_modules()
 
         # reset instrumented files
         logger.log.info("Removing existing instrumented files")
@@ -62,10 +61,6 @@ class Instrument():
             self._module_to_ast_list[module] = self._get_asts_from_module(module)
             # get code lines
             self._module_to_lines[module] = self._get_lines_from_module(module)
-
-        # get the list of all functions used in the specification
-        logger.log.info("Calling self._analyser.get_all_functions to get a list of functions in the specification")
-        self._all_functions = self._analyser.get_all_functions()
 
         # get the scfg of each of these functions
         logger.log.info("Constructing SCFGs of each function")
@@ -83,13 +78,35 @@ class Instrument():
             self._function_name_to_scfg_map[function].write_to_file(f"{function}.gv")
         
         # initialise the analyser class
-        logger.log.info("Calling self._analyser.initialise")
-        self._analyser.initialise(self._function_name_to_scfg_map)
+        logger.log.info("Instantiating Analyser")
+        self._analyser = Analyser(self._specification, self._function_name_to_scfg_map)
 
         # compute the instrumentation tree and the list of elements to instrument based on quantifiers
         logger.log.info("Determining statements in modules that must be instrumented")
         self._quantifier_instrumentation_points, self._instrumentation_tree = \
             self._analyser.compute_instrumentation_points()
+    
+    def _derive_list_of_modules(self):
+        """
+        Derive the list of modules from self._all_functions.
+
+        For now, just split by ., remove the last element of the list, and join back together.
+        """
+        # initialise empty list of modules
+        all_modules = []
+        # iterate through functions, getting the module name
+        for function in self._all_functions:
+            # split the function name
+            sequence = function.split(".")
+            # remove the function part
+            module_part = sequence[:-1]
+            # join to get the module name
+            module_name = ".".join(module_part)
+            # add to list
+            if module_name not in all_modules:
+                all_modules.append(module_name)
+        
+        return all_modules
     
     def _reset_instrumented_files(self):
         """

@@ -35,8 +35,10 @@ log = None
 
 def initialise_logging(directory="logs/"):
     global log
-    log = Log(directory)
+    if not log:
+        log = Log(directory)
 
 def end_logging():
     global log
     log.close()
+    log = None

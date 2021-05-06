@@ -31,33 +31,13 @@ class Analyser():
     Class for static analysis of source code based on an iCFTL specification.
     """
 
-    def __init__(self, specification, root_directory):
+    def __init__(self, specification, function_name_to_scfg_map):
         """
         Store the specification and function -> scfg map for use in other methods.
-
-        root_directory is the directory with respect to which fully-qualified function names
-        are defined.
         """
-        # initialise function name to scfg map
-        self._function_name_to_scfg_map = None
-
         # store specification
         self._specification = specification
-
         logger.log.info(f"Specification is\n{self._specification}")
-
-        # get the list of functions referred to in the specification
-        logger.log.info("Obtaining list of all functions referred to in the specification")
-        self._all_functions = self._specification.get_function_names_used()
-
-        # derive the list of modules from this the of functions
-        self._all_modules = self._derive_list_of_modules()
-    
-    def initialise(self, function_name_to_scfg_map):
-        """
-        SCFG search logic is separated from the constructor to allow the list of functions
-        computed during the constructor to be used by the Instrument class to derive ASTs.
-        """
 
         # initialise the map from function names to SCFGs
         self._function_name_to_scfg_map = function_name_to_scfg_map
@@ -68,34 +48,6 @@ class Analyser():
     
     def get_scfg_searcher(self):
         return self._scfg_searcher
-    
-    def _derive_list_of_modules(self):
-        """
-        Derive the list of modules from self._all_functions.
-
-        For now, just split by ., remove the last element of the list, and join back together.
-        """
-        # initialise empty list of modules
-        all_modules = []
-        # iterate through functions, getting the module name
-        for function in self._all_functions:
-            # split the function name
-            sequence = function.split(".")
-            # remove the function part
-            module_part = sequence[:-1]
-            # join to get the module name
-            module_name = ".".join(module_part)
-            # add to list
-            if module_name not in all_modules:
-                all_modules.append(module_name)
-        
-        return all_modules
-    
-    def get_all_modules(self):
-        return self._all_modules
-    
-    def get_all_functions(self):
-        return self._all_functions
     
     def compute_instrumentation_points(self) -> list:
         """
