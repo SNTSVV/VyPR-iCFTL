@@ -9,6 +9,7 @@ def func1():
     else:
         d = 20
         z = 10
+        f()
 
 def func2():
     for i in range(10):

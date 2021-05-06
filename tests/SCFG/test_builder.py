@@ -18,7 +18,7 @@ class TestSCFGBuilder(unittest.TestCase):
 
     def setUp(self):
         # initialise logger
-        logger.initialise_logging(directory="../logs/test-logs/instrumentation/")
+        logger.initialise_logging(directory="../logs/test-logs/")
         # read code and parse asts
         with open("test-data/programs/no-procedures-test-1.py") as h:
             self.code = h.read()

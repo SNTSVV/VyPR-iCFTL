@@ -13,7 +13,7 @@ class TestSpecificationsBuilder(unittest.TestCase):
         # construct specification
         self.specification = Specification()\
             .forall(q = changes('string').during('function'))\
-            .check(lambda q : q.next(calls('f1').during('function')))
+            .check(lambda q : q.next(calls('f1').during('function')).duration() < 1)
     
     def test_get_variable_to_obj_map(self):
         variables = list(self.specification.get_variable_to_obj_map().keys())

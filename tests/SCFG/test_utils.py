@@ -16,7 +16,7 @@ class TestSCFGUtils(unittest.TestCase):
 
     def setUp(self):
         # initialise logger
-        logger.initialise_logging(directory="../logs/test-logs/instrumentation/")
+        logger.initialise_logging(directory="../logs/test-logs/")
         # define assignment statement code
         self.assignment_stmt_code = "a = 10 + g()"
         # parse ast
