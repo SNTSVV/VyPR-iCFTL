@@ -16,7 +16,6 @@ unittests:
         - echo "Running unit tests."
         - mkdir logs
         - mkdir logs/test-logs
-        - mkdir logs/test-logs
         - yum install graphviz
         - pip install virtualenv
         - virtualenv venv
