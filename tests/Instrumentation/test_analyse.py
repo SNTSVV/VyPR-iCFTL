@@ -50,3 +50,13 @@ class TestInstrumentationAnalyse(unittest.TestCase):
             self.assertListEqual(list(map.keys()), ['c'])
             for variable in map:
                 self.assertIsInstance(map[variable], StatementSymbolicState)
+    
+    def test_inspect_constraints(self):
+        # construct variable -> symbolic state maps
+        variable_to_symbolic_state_maps = self.analyser._inspect_quantifiers()
+        # get the map map_index -> atomic_constraint_index -> subatom_index -> list of symbolic states.
+        instrumentation_point_tree = self.analyser._inspect_constraints(variable_to_symbolic_state_maps)
+        # assertions
+        for map_index in instrumentation_point_tree:
+            for symbolic_state in instrumentation_point_tree[map_index][0][0]:
+                self.assertEqual(symbolic_state.get_symbols_changed(), ['f'])
