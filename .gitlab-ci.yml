@@ -16,6 +16,8 @@ unittests:
         - echo "Running unit tests."
         - mkdir logs
         - mkdir logs/test-logs
+        - add-apt-repository universe
+        - apt update
         - apt-get install graphviz
         - pip install virtualenv
         - virtualenv venv
