@@ -17,7 +17,7 @@ unittests:
         - mkdir logs
         - mkdir logs/test-logs
         - apt update
-        - apt-get install graphviz
+        - apt-get --yes install graphviz
         - pip install virtualenv
         - virtualenv venv
         - source venv/bin/activate
