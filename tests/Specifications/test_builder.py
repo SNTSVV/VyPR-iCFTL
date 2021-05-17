@@ -54,7 +54,7 @@ class TestSpecificationsBuilderTwoQuantifiers(unittest.TestCase):
     
     def test_get_function_names_used(self):
         function_names_used = self.specification.get_function_names_used()
-        self.assertListEqual(function_names_used, ['function1', 'function2'])
+        self.assertSetEqual(set(function_names_used), set(['function1', 'function2']))
     
     def test_forall_structure(self):
         # get the quantifiers
