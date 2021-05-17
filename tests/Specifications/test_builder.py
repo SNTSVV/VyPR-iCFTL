@@ -64,3 +64,24 @@ class TestSpecificationsBuilderTwoQuantifiers(unittest.TestCase):
         self.assertIsInstance(quantifiers['q'], ConcreteStateVariable)
         # check the second quantifier
         self.assertIsInstance(quantifiers['t'], TransitionVariable)
+
+class TestSpecificationsBuilderDuration(unittest.TestCase):
+
+    def setUp(self):
+        # construct specification
+        self.specification = Specification()\
+            .forall(c = calls('func').during('function1'))\
+            .check(lambda c : c.duration() < 1)
+    
+    def test_get_variables(self):
+        self.assertListEqual(self.specification.get_variables(), ['c'])
+    
+    def test_get_function_names_used(self):
+        function_names_used = self.specification.get_function_names_used()
+        self.assertListEqual(function_names_used, ['function1'])
+    
+    def test_forall_structure(self):
+        # get the quantifiers
+        quantifiers = self.specification.get_variable_to_obj_map()
+        # check the type
+        self.assertIsInstance(quantifiers['c'], TransitionVariable)
