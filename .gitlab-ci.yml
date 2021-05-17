@@ -21,7 +21,7 @@ unittests:
         - pip install virtualenv
         - virtualenv venv
         - source venv/bin/activate
-        - pip install -r requirements.txt
+        - pip install -r requirements/main.txt
         - pwd
     script:
         - "cd tests/ && python3 -m unittest"
