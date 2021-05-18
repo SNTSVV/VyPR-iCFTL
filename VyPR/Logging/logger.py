@@ -15,7 +15,7 @@ class Log():
         log_filename = str(datetime.datetime.now())
         # check for existence of the directory
         if not os.path.exists(directory):
-            os.mkdir(directory)
+            os.makedirs(directory)  # make a directory with intermediate directories
         # open the directory
         self._handle = open(os.path.join(directory, log_filename), "a")
     
