@@ -13,6 +13,10 @@ class Log():
 
     def __init__(self, directory):
         log_filename = str(datetime.datetime.now())
+        # check for existence of the directory
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+        # open the directory
         self._handle = open(os.path.join(directory, log_filename), "a")
     
     def close(self):
