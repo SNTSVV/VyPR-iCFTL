@@ -6,6 +6,40 @@ This repository contains implementations of instrumentation and monitoring for t
 
 iCFTL is an extension of CFTL to the inter-procedural setting.
 
+### Setting things up
+
+To set up VyPR, you need to install the necessary Python libraries:
+```
+apt-get install graphviz
+pip install virtualenv
+virtualenv venv
+source venv/bin/activate
+pip install -r requirements/main.txt
+```
+Depending on the OS, you may need to replace `apt-get` with your package manager (for example, `yum`).
+
+### Running instrumentation
+
+In order for VyPR to be able to monitor a program at runtime, the program needs to contain instrumentation code.
+
+You can insert instrumentation code for a specification by running
+```
+python instrumentation_command_line.py --root-dir dir --spec-file spec-file.py
+```
+If you're using VyPR to analyse a Flask-based web service, you can add the `--flask` flag.  This will lead to the instrumentation code placed being modified to work with Flask.  For example, you could run
+```
+python instrumentation_command_line.py --root-dir dir --spec-file spec-file.py --flask
+```
+
+### Enabling monitoring
+
+For the time being, we give instructions for activating monitoring in a web service.  You need to add the following code:
+```
+from VyPR.Monitoring.online import OnlineMonitor
+vypr = OnlineMonitor("spec-file.py", flask_app)
+```
+where `flask_app` is the Flask application object.
+
 ### Running the tests
 
 The set of unit tests can be run by navigating to `tests/` and running `python -m unittest`.
