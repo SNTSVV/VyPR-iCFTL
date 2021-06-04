@@ -146,13 +146,9 @@ class SCFGSearcher():
             relevant_symbolic_states = [base_symbolic_state]
 
         elif type(temporal_operator) is ConcreteStateBeforeTransition:
-            # since we represent edges with the symbolic states immediately after them,
-            # to get the symbolic state immediately before the edge that connects to base_symbolic_state,
-            # we can just refer to the parent of base_symbolic_state
-            # Note: for symbolic states captured by quantifiers (ie, that perform actions on program variables),
-            # there can only be one parent so base_symbolic_state.get_parents() will give a list with only
-            # one element
-            relevant_symbolic_states = base_symbolic_state.get_parents()
+            # we get the same symbolic state as in the ConcreteStateBeforeTransition case - we leave it to
+            # the final instrument placement to adjust indices accordingly
+            relevant_symbolic_states = [base_symbolic_state]
         
         return relevant_symbolic_states
     

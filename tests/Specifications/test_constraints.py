@@ -15,7 +15,8 @@ from VyPR.Specifications.constraints import (ConcreteStateVariable,
                                             NextTransitionFromConcreteState,
                                             get_base_variable,
                                             TimeBetweenLessThanConstant,
-                                            DurationOfTransitionLessThanConstant)
+                                            DurationOfTransitionLessThanConstant,
+                                            ConcreteStateBeforeTransition)
 from VyPR.Specifications.predicates import changes, calls
 
 class TestSpecificationsBuilder(unittest.TestCase):
@@ -78,7 +79,7 @@ class TestSpecificationsBuilder(unittest.TestCase):
         self.assertIsInstance(lhs_composition_sequence[0], ConcreteStateVariable)
         rhs_composition_sequence = composition_sequence_dict[1]
         self.assertIsInstance(rhs_composition_sequence[-1], ConcreteStateVariable)
-        self.assertIsInstance(rhs_composition_sequence[0], NextTransitionFromConcreteState)
+        self.assertIsInstance(rhs_composition_sequence[0], ConcreteStateBeforeTransition)
     
     def test_get_base_variable_normal_atom(self):
         base_variable = get_base_variable(self.simple_atom)
