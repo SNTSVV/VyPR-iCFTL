@@ -1,4 +1,3 @@
-![CI Status](https://gitlab.uni.lu/jdawes/VyPR-iCFTL/badges/master/pipeline.svg)
 
 ## VyPR for iCFTL
 
