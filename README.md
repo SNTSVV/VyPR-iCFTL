@@ -6,6 +6,12 @@ This repository contains implementations of instrumentation and monitoring for t
 
 iCFTL is an extension of CFTL to the inter-procedural setting.
 
+### Authors
+
+* Joshua Heneage Dawes (joshua.dawes@uni.lu)
+* Domenico Bianculli (domenico.bianculli@uni.lu)
+
+
 ### Setting things up
 
 To set up VyPR, you need to install the necessary Python libraries:
@@ -49,3 +55,9 @@ The set of unit tests can be run by navigating to `tests/` and running `python -
 A script `generate-docs.sh` is provided in `docs/`, which uses `sphinx-apidoc` to automatically generate and builds Sphinx documentation based on the source code in the repository.
 
 To run the script, make sure you're in `docs/`.  Once the script has finished, navigate to `docs/_build/html/index.html`.
+
+## Licensing
+
+VyPR for iCFTL is © 2021 University of Luxembourg and licensed under the the Apache 2 license.
+
+Please read `VyPR-iCFTL licensing information.txt` for more details.
