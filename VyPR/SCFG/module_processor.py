@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module containing the logic to find function/method definitions in a given Python 3
 module and construct a map from fully-qualified names to SCFGs.
 """

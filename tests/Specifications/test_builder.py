@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module containing testing code for VyPR.Specifications.builder module.
 """
 

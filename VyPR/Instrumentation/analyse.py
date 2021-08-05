@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Main module to handle logic for instrumentation.
 
 Instrumentation consists of generating an instance of the Analyser class.

@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module containing the logic for adding instrumentation code based on the results of static analysis with respect to iCFTL specifications.
 """
 

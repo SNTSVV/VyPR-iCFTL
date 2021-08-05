@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module that holds all logic regarding binding/formula tree pairs derived while monitoring for an iCFTL specification.
 """
 import logging

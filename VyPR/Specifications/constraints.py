@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module containing classes to represent constraints used in an iCFTL specification.
 
 For example, in the specification

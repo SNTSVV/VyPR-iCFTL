@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module containing classes for construction of iCFTL specifications.
 
 Specifications are constructed hierarchically, as chains of objects.

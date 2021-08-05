@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module containing logic for construction of a symbolic control-flow graph given a Python 3 program.
 """
 

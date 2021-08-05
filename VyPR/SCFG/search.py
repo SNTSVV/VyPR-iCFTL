@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module to hold all logic for searching a set of SCFGs for symbolic state/pairs of symbolic states
 based on a predicate found in an iCFTL specification.
 """

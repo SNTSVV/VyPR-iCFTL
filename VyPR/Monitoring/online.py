@@ -1,4 +1,8 @@
 """
+
+Copyright (C) 2021 University of Luxembourg
+Developed by Dr. Joshua Heneage Dawes.
+
 Module to contain the logic for performing online monitoring of an instrumented Python 3 program with respect to an iCFTL specification.
 """
 
