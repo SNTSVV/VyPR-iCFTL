@@ -1,0 +1,9 @@
+VyPR-iCFTL is © 2021 University of Luxembourg
+and is distributed under the Apache 2 license
+
+Authors:
+  - Joshua Heneage Dawes (joshua.dawes@uni.lu)
+  - Domenico Bianculli (domenico.bianculli@uni.lu)
+
+Paper:
+  - "Specifying Properties over Inter-Procedural, Source Code Level Behaviour of Programs", RV 2021, Los Angeles, USA
