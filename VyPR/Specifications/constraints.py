@@ -100,6 +100,7 @@ def _derive_sequence_of_temporal_operators(obj) -> list:
             current_obj = current_obj.get_transition_expression()
         
         elif type(current_obj) in [ConcreteStateBeforeTransition, ConcreteStateAfterTransition]:
+            temporal_operator_sequence.append(current_obj)
             current_obj = current_obj.get_transition_expression()
         
         elif type(current_obj) is NextTransitionFromConcreteState:
@@ -791,6 +792,8 @@ class DurationOfTransition():
             return DurationOfTransitionLessThanConstant(self, other)
         if type(other) in [int, float]:
             return DurationOfTransitionGreaterThanConstant(self, other)
+        if type(other) is ValueInConcreteState:
+            return DurationOfTransitionLessThanValueInConcreteState(self, other)
 
 class ConcreteStateBeforeTransition(ConcreteStateExpression):
     """
@@ -862,6 +865,42 @@ class DurationOfTransitionLessThanConstant(ConstraintBase, NormalAtom):
         """
         measurement = measurement_dictionary[atom_index][subatom_index]
         return measurement < self._constant
+
+class DurationOfTransitionLessThanValueInConcreteState(ConstraintBase, MixedAtom):
+    """
+    Class to represent the comparison of a transition duration with a value
+    given to a program variable by a concrete state.
+    """
+
+    def __init__(self, transition_duration, value_expression):
+        self._transition_duration = transition_duration
+        self._value_expression = value_expression
+    
+    def __repr__(self):
+        return f"{self._transition_duration} < {self._value_expression}"
+    
+    def __eq__(self, other):
+        return (type(other) is type(self)
+                and self._transition_duration == other._transition_duration
+                and self._value_expression == other._value_expression)
+    
+    def get_transition_duration(self):
+        return self._transition_duration
+    
+    def get_value_expression(self):
+        return self._value_expression
+    
+    def check(self, atom_index, subatom_index, measurement_dictionary):
+        """
+        Given the measurement found at measurement_dictionary[atom_index][subatom_index],
+        check to see whether the constraint expressed by this atom is satisfied.
+        """
+        if measurement_dictionary[atom_index].get(0) and measurement_dictionary[atom_index].get(1):
+            # both values exist, so compare them
+            return measurement_dictionary[atom_index][0] < measurement_dictionary[atom_index][1]
+        else:
+            # None is interpreted as inconclusive
+            return None
 
 class DurationOfTransitionGreaterThanConstant(ConstraintBase, NormalAtom):
     """
