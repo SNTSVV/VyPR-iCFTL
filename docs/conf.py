@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 
 project = 'VyPR-iCFTL'
-copyright = '2021, Dr. Joshua Heneage Dawes'
+copyright = 'Apache License Version 2.0, 2021, University of Luxembourg'
 author = 'Dr. Joshua Heneage Dawes'
 
 
